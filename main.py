@@ -1,4 +1,4 @@
-# main.py (COMPLETE - v24.07.17 - Incorporating all updates)
+# main.py (COMPLETE - Updated Cover Letter Display)
 
 import streamlit as st
 import google.generativeai as genai
@@ -9,7 +9,6 @@ import logging
 import pandas as pd # Import pandas for DataFrame check
 
 # --- Specific Google API Error Imports ---
-# Add these imports if not already present from other libraries
 try:
     from google.api_core.exceptions import NotFound, BadRequest, PermissionDenied, ResourceExhausted, InternalServerError, GoogleAPICallError
 except ImportError:
@@ -43,6 +42,7 @@ from display import (
 # Import the function to fetch data *and* options
 from dashboard import fetch_job_data_and_options, show_dashboard
 
+
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -51,15 +51,12 @@ TOOL_OPTIONS = {
     "Standard Analysis": "📊", "ATS Optimization": "🎯", "Cover Letter Synthesizer": "📨",
     "LinkedIn Optimization": "💼", "Interview Tips": "🤝", "Career Roadmap": "🗺️"
 }
-# --- UPDATED & PRUNED Model List ---
 MODEL_OPTIONS = {
     "gemini-1.5-pro-latest": "Gemini 1.5 Pro (Latest)",
     "gemini-1.5-flash-latest": "Gemini 1.5 Flash (Latest)",
     "gemini-2.0-flash": "Gemini 2.0 Flash", # Re-added specific version
     "custom": "Enter Custom Model Name..."
 }
-# --- END UPDATED List ---
-
 
 # --- Error handling wrapper ---
 def safe_analysis(func):
@@ -68,15 +65,13 @@ def safe_analysis(func):
         try:
             return func(*args, **kwargs)
         except Exception as e:
-            # Log the full traceback for debugging
             logging.error(f"Analysis function {func.__name__} failed: {e}", exc_info=True)
-            # Display a user-friendly error in Streamlit
             st.error(f"❌ Analysis failed unexpectedly: {str(e)}")
-            # Optionally display more details from specific error types if needed
             if isinstance(e, (NotFound, BadRequest, PermissionDenied, GoogleAPICallError)):
                  st.caption(f"Details: Check API Key permissions, model name validity, or resource limits.")
             return None # Indicate failure
     return wrapper
+
 
 # --- Helper functions ---
 def show_analysis_progress():
@@ -95,14 +90,15 @@ def init_session_state():
     """Initializes session state variables including defaults for filters."""
     defaults = {
         'dash_company': [], 'dash_title': [], 'dash_location': [],
-        'dash_date': None, 'dash_status': "All",
+        'dash_date': None, # Initialize date filter as None (no selection)
+        'dash_status': "All",
         'jobs_df': None, # To store the main dataframe
         'filter_options': { # Default structure for options
              'companies': ['All'], 'positions': ['All'], 'cities': ['All'],
-             'min_date': datetime.now().date() - timedelta(days=90), # Use timedelta correctly
+             'min_date': datetime.now().date() - timedelta(days=90),
              'max_date': datetime.now().date()
         },
-        'selected_model_key_widget': list(MODEL_OPTIONS.keys())[2] # Default to first model
+        'selected_model_key_widget': list(MODEL_OPTIONS.keys())[2] # Default to third model (flash)
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -112,36 +108,35 @@ def init_session_state():
 
 # --- Main Application Logic ---
 def main():
-    # Configure Page - Update Title
     st.set_page_config(
-        page_title="Pathlight AI - Career Suite", # <<< UPDATED PAGE TITLE
+        page_title="Pathlight AI - Career Suite",
         layout="wide",
         initial_sidebar_state="expanded"
     )
 
-    # --- Apply Custom CSS ONCE globally ---
-    st.markdown(GLOBAL_CSS, unsafe_allow_html=True) # Assumes GLOBAL_CSS is correctly defined/imported
-
-    # Initialize Session State
+    st.markdown(GLOBAL_CSS, unsafe_allow_html=True)
     init_session_state()
 
     # --- Fetch Data and Filter Options Early ---
-    # Only fetch if not already in session state
     if st.session_state['jobs_df'] is None:
         logging.info("jobs_df not found in session_state. Fetching data and options...")
-        with st.spinner("Loading market data..."): # Add spinner for initial data load
+        with st.spinner("Loading market data..."):
             jobs_df, filter_options = fetch_job_data_and_options()
-        # Validate fetched data before storing
-        if isinstance(jobs_df, pd.DataFrame):
+        if isinstance(jobs_df, pd.DataFrame) and not jobs_df.empty:
              st.session_state['jobs_df'] = jobs_df
              st.session_state['filter_options'] = filter_options
-             logging.info(f"Data fetched ({len(jobs_df)} rows) and options stored in session_state.")
+             logging.info(f"Data fetched ({len(jobs_df)} rows) and options stored.")
+        elif isinstance(jobs_df, pd.DataFrame) and jobs_df.empty:
+             logging.warning("fetch_job_data_and_options returned an empty DataFrame.")
+             st.session_state['jobs_df'] = pd.DataFrame() # Store empty DF
+             st.session_state['filter_options'] = filter_options # Keep options
+             st.warning("No job data found in the source.")
         else:
-             logging.error("fetch_job_data_and_options did not return a DataFrame. Using defaults.")
-             # Keep default empty dataframe and options in session state
+             logging.error("fetch_job_data_and_options did not return a DataFrame.")
              st.error("Failed to load initial market data.")
-             jobs_df = st.session_state['jobs_df'] # Will be None or default empty
-             filter_options = st.session_state['filter_options'] # Will be default
+             # Keep defaults
+             jobs_df = st.session_state['jobs_df'] # Should be None or default empty
+             filter_options = st.session_state['filter_options'] # Default
     else:
         jobs_df = st.session_state['jobs_df']
         filter_options = st.session_state['filter_options']
@@ -157,46 +152,50 @@ def main():
 
     # --- Sidebar ---
     with st.sidebar:
-        # --- UPDATED SIDEBAR TITLE ---
         st.markdown('<div class="sidebar-title"><h1><span style="color: #3498db;">Pathlight</span> AI</h1></div>', unsafe_allow_html=True)
-        # --- END UPDATE ---
 
         st.markdown("### 🛠️ Analysis Tools")
         tool_selection = st.radio("Select Analysis Type:", options=list(TOOL_OPTIONS.keys()), format_func=lambda x: f"{TOOL_OPTIONS[x]} {x}", help="Choose the analysis to perform.")
         st.divider()
 
-        # --- Filters Section - Uses dynamic options ---
+        # --- Filters Section ---
         st.markdown("### 📊 Job Market Filters")
         st.markdown("<p class='filter-note'>Filters apply only to 'Job Market Insights'.</p>", unsafe_allow_html=True)
 
-        # Ensure filter_options exist before accessing keys
         min_date_option = filter_options.get('min_date', datetime.now().date() - timedelta(days=90))
         max_date_option = filter_options.get('max_date', datetime.now().date())
 
         st.date_input(
-            "Date Range (Optional)", value=st.session_state.dash_date,
-            min_value=min_date_option, max_value=max_date_option,
+            "Date Range (Optional)",
+            value=st.session_state.dash_date or (),
+            min_value=min_date_option,
+            max_value=max_date_option,
             key="dash_date_widget",
-            on_change=lambda: setattr(st.session_state, 'dash_date', st.session_state.dash_date_widget)
+            help="Select a start and end date to filter job postings.",
+            on_change=lambda: setattr(st.session_state, 'dash_date', st.session_state.dash_date_widget if isinstance(st.session_state.dash_date_widget, tuple) and len(st.session_state.dash_date_widget)==2 else None)
         )
+
         company_options = filter_options.get('companies', ['All'])
         st.multiselect(
             "Company", options=company_options, default=st.session_state.dash_company,
-            key="dash_company_widget", help="Select one or more companies."
+            key="dash_company_widget", help="Select one or more companies.",
+            on_change=lambda: setattr(st.session_state, 'dash_company', st.session_state.dash_company_widget)
         )
-        st.session_state.dash_company = st.session_state.dash_company_widget # Update state immediately
+
         position_options = filter_options.get('positions', ['All'])
         st.multiselect(
             "Job Title", options=position_options, default=st.session_state.dash_title,
-            key="dash_title_widget", help="Select one or more job titles."
+            key="dash_title_widget", help="Select one or more job titles.",
+            on_change=lambda: setattr(st.session_state, 'dash_title', st.session_state.dash_title_widget)
         )
-        st.session_state.dash_title = st.session_state.dash_title_widget # Update state immediately
+
         city_options = filter_options.get('cities', ['All'])
         st.multiselect(
             "Location", options=city_options, default=st.session_state.dash_location,
-            key="dash_location_widget", help="Select one or more locations."
+            key="dash_location_widget", help="Select one or more locations.",
+             on_change=lambda: setattr(st.session_state, 'dash_location', st.session_state.dash_location_widget)
         )
-        st.session_state.dash_location = st.session_state.dash_location_widget # Update state immediately
+
         st.radio(
             "Job Status", ["All", "Active", "Expired"],
             index=["All", "Active", "Expired"].index(st.session_state.dash_status),
@@ -206,7 +205,6 @@ def main():
         st.divider()
 
         # --- About Section ---
-        # Update name in About section
         st.markdown("""
             <div class='feature-card'>
                 <h3>🔍 About Pathlight AI</h3>
@@ -220,8 +218,6 @@ def main():
         """, unsafe_allow_html=True)
 
     # --- Main Content Area ---
-
-    # --- NEW MAIN TITLE ---
     st.markdown(
         """
         <div class="main-title-box">
@@ -230,41 +226,32 @@ def main():
         """,
         unsafe_allow_html=True
     )
-    
-    # --- END NEW MAIN TITLE ---
 
-
-    # --- AI Model Configuration (Improved Feedback & Error Handling) ---
-    with st.expander("⚙️ AI Model Configuration", expanded=False): # Start collapsed
+    # --- AI Model Configuration ---
+    with st.expander("⚙️ AI Model Configuration", expanded=False):
         st.markdown("#### Configure the Gemini AI Model")
 
         secret_api_key = st.secrets.get("GEMINI_API_KEY")
         has_secret_key = bool(secret_api_key)
 
         user_provided_key = st.text_input(
-            "Leave blank to use the pre-configured key. Enter your own Gemini API key if the pre-configured key isn’t functioning.",
+            "Leave blank to use the pre-configured key. Enter your own Gemini API key if needed.",
             type="password", value="", key="user_api_key_input",
-            help="If you provide a key, it overrides any pre-configured one."
+            help="If provided, this key overrides any pre-configured one."
         )
-        st.markdown("<small>Need an API Key? Get one from [Google AI Studio](https://ai.google.dev/gemini-api/docs/api-key)</small>", unsafe_allow_html=True)
+        st.markdown("<small>Get an API Key from [Google AI Studio](https://ai.google.dev/gemini-api/docs/api-key)</small>", unsafe_allow_html=True)
         st.markdown("")
 
-        potential_api_key = None; key_source = None
-        if user_provided_key:
-            potential_api_key = user_provided_key; key_source = "user"; logging.info("Using user-provided API key.")
-        elif has_secret_key:
-            potential_api_key = secret_api_key; key_source = "secret"; logging.info("Using pre-configured API key.")
-        else:
-            logging.warning("No API key available.")
+        potential_api_key = user_provided_key or secret_api_key
+        key_source = "user" if user_provided_key else ("secret" if secret_api_key else "none")
 
-        # Use session state for selectbox to preserve selection across runs
         st.selectbox(
              "Select Gemini Model:", options=list(MODEL_OPTIONS.keys()),
              format_func=lambda x: MODEL_OPTIONS.get(x, x),
              help="'Flash' models are faster. 'Pro' models are more powerful.",
-             key="selected_model_key_widget" # Use key for widget
+             key="selected_model_key_widget"
         )
-        selected_model_key = st.session_state.selected_model_key_widget # Get value from state
+        selected_model_key = st.session_state.selected_model_key_widget
 
         custom_model_name = ""; final_model_name = ""
         if selected_model_key == "custom":
@@ -280,60 +267,51 @@ def main():
             try:
                 genai.configure(api_key=potential_api_key)
                 model = genai.GenerativeModel(final_model_name)
-                logging.info(f"Testing model '{final_model_name}' configuration...")
-                try: # Simple connectivity test
-                     test_response = model.generate_content("Hi", generation_config=genai.types.GenerationConfig(max_output_tokens=5, temperature=0.1))
-                     if not test_response.candidates or not test_response.candidates[0].content.parts:
-                          raise ValueError("Model test returned empty response.")
-                     logging.info(f"Model '{final_model_name}' test successful.")
-                except Exception as test_err: raise test_err # Re-raise test errors
+                logging.info(f"Attempting to configure and test model '{final_model_name}'...")
+                # Simple test call
+                _ = model.generate_content("Hi", generation_config=genai.types.GenerationConfig(max_output_tokens=5, temperature=0.1, stop_sequences=["\n"]))
+                logging.info(f"Model '{final_model_name}' test successful.")
 
                 key_source_display = "provided" if key_source == "user" else "pre-configured"
                 model_status_placeholder.success(f"✅ Configured: `{final_model_name}` using {key_source_display} API Key. Ready.")
-                logging.info(f"Gemini Model configured and tested: {final_model_name}. Source: {key_source_display}")
+                logging.info(f"Gemini Model configured: {final_model_name}. Source: {key_source_display}")
 
             except (NotFound, BadRequest, PermissionDenied, ResourceExhausted, InternalServerError, GoogleAPICallError) as google_err:
                  error_message = f"❌ Config Error (`{final_model_name}`): {google_err}"
-                 logging.error(f"Google API Error during config/test: {google_err}", exc_info=False) # Don't need full traceback for common errors
-                 if isinstance(google_err, NotFound) or "is not found" in str(google_err) or "is not supported" in str(google_err):
-                      error_message += "\nModel may be unavailable or incorrectly named. Try another model."
-                 elif key_source == "secret" and ("API key not valid" in str(google_err) or isinstance(google_err, PermissionDenied)):
-                      error_message += "\nThe pre-configured API key may be invalid/lack permissions. Please provide your own key above."
-                 elif "API key not valid" in str(google_err) or isinstance(google_err, PermissionDenied):
-                      error_message += "\nPlease check the API Key you provided."
+                 logging.error(f"Google API Error during config/test: {google_err}", exc_info=False)
+                 if isinstance(google_err, NotFound) or "is not found" in str(google_err) or "is not supported" in str(google_err): error_message += "\nModel unavailable/misnamed?"
+                 elif key_source == "secret" and ("API key not valid" in str(google_err) or isinstance(google_err, PermissionDenied)): error_message += "\nPre-configured key invalid/lacks permissions?"
+                 elif "API key not valid" in str(google_err) or isinstance(google_err, PermissionDenied): error_message += "\nPlease check the API Key provided."
                  model_status_placeholder.error(error_message)
                  model = None
             except Exception as e:
                 error_message = f"❌ Unexpected Config Error (`{final_model_name}`): {e}."
                 logging.error(f"Unexpected error during config/test: {e}", exc_info=True)
-                if key_source == "secret": error_message += "\nAn issue occurred using the pre-configured key. Provide your own key."
+                if key_source == "secret": error_message += "\nTry providing your own key."
                 model_status_placeholder.error(error_message)
                 model = None
         elif not potential_api_key:
-            model_status_placeholder.warning("⚠️ API Key required. Enter one above or configure server secrets.")
+            model_status_placeholder.warning("⚠️ API Key required.")
         elif not final_model_name:
              if selected_model_key == "custom": model_status_placeholder.warning("⚠️ Enter custom model name.")
              else: model_status_placeholder.warning("⚠️ Select a model.")
-
 
     # --- TABS ---
     tab_resume, tab_jobs, tab_dashboard = st.tabs(["📄 Resume Analysis & Tools", "🎯 Job Recommendations", "📊 Job Market Insights"])
 
     # --- Resume Analysis & Tools Tab ---
     with tab_resume:
-        # --- UPDATED TITLE/SUBTITLE ---
         st.markdown(
             """
             <div class="tab-title-box">
                 <h2>Resume Analysis & Career Tools</h2>
             </div>
             <p class="tab-subtitle">
-                Upload your resume below and optionally paste a job description to leverage AI insights.
+                Upload your resume and optionally paste a job description to leverage AI insights.
             </p>
             """,
             unsafe_allow_html=True
         )
-        # --- END UPDATE ---
 
         input_col1, input_col2 = st.columns([1, 1])
         with input_col1:
@@ -347,12 +325,12 @@ def main():
                 except Exception as e: st.error(f"❌ Error extracting: {e}"); resume_text = None
         with input_col2:
             st.markdown("##### 📝 Job Description (Optional)")
-            job_description = st.text_area("Paste job description...", height=200, label_visibility="collapsed")
+            job_description = st.text_area("Paste job description...", height=200, label_visibility="collapsed", key="job_desc_main")
             if job_description: st.success("✅ Job description provided.")
         st.markdown("---")
 
         analyze_col1, analyze_col2, analyze_col3 = st.columns([1, 2, 1])
-        with analyze_col2: # Analyze Button logic
+        with analyze_col2:
             is_model_ready = model is not None; is_resume_ready = resume_text is not None
             is_ats_ready = is_resume_ready and resume_file is not None and tool_selection == "ATS Optimization"
             is_tool_ready = is_resume_ready and (tool_selection != "ATS Optimization" or is_ats_ready)
@@ -364,68 +342,71 @@ def main():
             elif not is_resume_ready: st.caption(":warning: Upload resume first.")
             elif tool_selection == "ATS Optimization" and not is_ats_ready: st.caption(":warning: ATS needs uploaded file.")
 
-        if analyze_button: # Analysis Execution
-            @safe_analysis # Wrap the analysis logic
+        if analyze_button:
+            @safe_analysis
             def perform_analysis_local():
                  nonlocal analysis_result; logging.info(f"Running: {tool_selection}")
-                 # Add a progress indicator for longer tasks
                  with st.spinner(f"Running {tool_selection}... Please wait."):
                     if tool_selection == "Standard Analysis":
-                        if job_description and resume_text:
+                         if job_description and resume_text:
                             st.markdown("<div class='analysis-card'><h3>📊 Standard Analysis Results</h3></div>", unsafe_allow_html=True)
                             analysis_result = get_match_analysis(model, job_description, resume_text)
                             if analysis_result: display_match_results(analysis_result)
-                            # Error handled by @safe_analysis
-                        else: st.warning("⚠️ Standard Analysis requires both resume and job description.")
+                         else: st.warning("⚠️ Standard Analysis requires both resume and job description.")
+
                     elif tool_selection == "ATS Optimization":
-                        if resume_text and resume_file:
-                            st.markdown("<div class='analysis-card'><h3>🎯 ATS Optimization Analysis</h3></div>", unsafe_allow_html=True)
+                         if resume_text and resume_file:
+                            
                             match_analysis_for_ats = None
                             if job_description:
                                 try:
                                     logging.info("Preliminary match analysis for ATS...")
-                                    # Nested spinner might look weird, keep it simple
                                     match_analysis_for_ats = get_match_analysis(model, job_description, resume_text)
                                 except Exception as match_err: logging.warning(f"Preliminary match failed: {match_err}"); st.warning(f"Could not perform preliminary match: {match_err}")
                             resume_file.seek(0)
                             logging.info("Performing ATS optimization checks...")
                             analysis_result = ats_optimization.get_ats_optimization_results(resume_text, resume_file, match_analysis_for_ats, model)
                             if analysis_result: display_ats_optimization_results(analysis_result)
-                            # Error handled by @safe_analysis
-                        else: st.warning("⚠️ ATS Optimization requires an uploaded resume file.")
+                         else: st.warning("⚠️ ATS Optimization requires an uploaded resume file.")
+
                     elif tool_selection == "Cover Letter Synthesizer":
                         if job_description and resume_text:
                             st.markdown("<div class='analysis-card'><h3>📨 Generated Cover Letter</h3></div>", unsafe_allow_html=True)
                             logging.info("Synthesizing cover letter...")
                             cover_letter = generate_custom_cover_letter(model, job_description, resume_text)
                             if cover_letter and not cover_letter.startswith("// Error"):
-                                st.markdown('<div class="suggestion-card" style="background-color: var(--background-color, #ffffff); border-left: none; padding: 1.5rem;">', unsafe_allow_html=True)
-                                st.text_area("Cover Letter Output", cover_letter, height=400, label_visibility="collapsed")
-                                st.markdown('</div>', unsafe_allow_html=True)
+                                # --- DISPLAY COVER LETTER DIRECTLY ---
+                                st.text_area("Cover Letter Output", cover_letter, height=400, label_visibility="collapsed", key="cover_letter_output")
                                 st.download_button("⬇️ Download Cover Letter (.txt)", cover_letter, "cover_letter.txt", "text/plain")
-                            elif cover_letter: logging.error(f"CL gen failed: {cover_letter}"); st.error(f"Could not generate: {cover_letter}")
-                            # Error handled by @safe_analysis if exception occurs
+                                # --- END DIRECT DISPLAY ---
+                            elif cover_letter:
+                                logging.error(f"Cover Letter generation failed (returned error message): {cover_letter}")
+                                st.error(f"Could not generate cover letter: {cover_letter}")
+                            else: # Handle None return
+                                logging.error("Cover Letter generation failed (returned None).")
+                                st.error("Failed to generate cover letter.")
                         else: st.warning("⚠️ Cover Letter requires resume and job description.")
                         analysis_result = None
+
                     elif tool_selection == "LinkedIn Optimization":
-                        if resume_text:
-                            st.markdown("<div class='analysis-card'><h3>💼 LinkedIn Optimization Suggestions</h3></div>", unsafe_allow_html=True)
+                         if resume_text:
+                            
                             logging.info("Generating LinkedIn suggestions...")
                             analysis_result = generate_linkedin_optimization(model, resume_text)
                             if analysis_result: display_linkedin_optimization(analysis_result)
-                            # Error handled by @safe_analysis
-                        else: st.warning("⚠️ LinkedIn Optimization requires resume text.")
+                         else: st.warning("⚠️ LinkedIn Optimization requires resume text.")
+
                     elif tool_selection == "Interview Tips":
-                        if resume_text and job_description:
+                         if resume_text and job_description:
                             st.markdown("<div class='analysis-card'><h3>🤝 Interview Preparation Tips</h3></div>", unsafe_allow_html=True)
                             logging.info("Generating interview tips...")
                             analysis_result = generate_interview_tips(model, resume_text, job_description)
                             if analysis_result: display_interview_tips(analysis_result)
-                            # Error handled by @safe_analysis
-                        else: st.warning("⚠️ Interview Tips require resume and job description.")
+                         else: st.warning("⚠️ Interview Tips require resume and job description.")
+
                     elif tool_selection == "Career Roadmap":
-                        if resume_text:
-                            st.markdown("<div class='analysis-card'><h3>🗺️ Personalized Career Roadmap</h3></div>", unsafe_allow_html=True)
+                         if resume_text:
+                    
                             logging.info("Generating career roadmap...")
                             analysis_result = generate_career_roadmap(model, resume_text)
                             if analysis_result:
@@ -436,13 +417,11 @@ def main():
                                     else: display_career_roadmap(analysis_result)
                                 elif isinstance(analysis_result, str): logging.warning("Roadmap simple text."); display_career_recommendation(analysis_result)
                                 else: logging.error(f"Roadmap unexpected format: {type(analysis_result)}"); st.error("⚠️ Roadmap unexpected format.")
-                            # Error handled by @safe_analysis if it's None
-                        else: st.warning("⚠️ Career Roadmap requires resume text.")
+                         else: st.warning("⚠️ Career Roadmap requires resume text.")
                     else:
                          logging.error(f"Invalid tool selection: {tool_selection}"); st.error("Invalid tool selection.")
                          analysis_result = None
-            # --- End of perform_analysis_local definition ---
-            perform_analysis_local() # Execute analysis
+            perform_analysis_local()
 
     # --- Job Recommendations Tab ---
     with tab_jobs:
@@ -456,15 +435,11 @@ def main():
                 try:
                     job_resume_file.seek(0)
                     job_input_text = extract_text(job_resume_file)
-                    job_resume_file.seek(0) # Reset pointer
+                    job_resume_file.seek(0)
                     if job_input_text:
                         st.success("✅ Resume text extracted for recommendation!")
-                    else:
-                        st.error("❌ Failed text extraction.")
-                        job_input_text = "" # Ensure it's empty on failure
-                except Exception as e:
-                    st.error(f"Error extracting text: {e}")
-                    job_input_text = "" # Ensure it's empty on exception
+                    else: st.error("❌ Failed text extraction."); job_input_text = ""
+                except Exception as e: st.error(f"Error extracting text: {e}"); job_input_text = ""
 
         job_rec_button = st.button("💡 Get Job Recommendation & Roadmap", key="job_recommend_button", type="primary", use_container_width=True, disabled=(model is None or not job_input_text))
         if model is None: st.caption(":warning: Configure AI Model first.")
@@ -472,8 +447,8 @@ def main():
         if job_rec_button:
              if model and job_input_text:
                  logging.info("Generating job recommendation...")
-                 with st.spinner("🧠 Generating recommendation..."): # Add spinner
-                     try: # Wrap generation in try/except @safe_analysis not used here
+                 with st.spinner("🧠 Generating recommendation..."):
+                     try:
                         roadmap_result = job_recommendation.generate_job_recommendation_and_roadmap(model, job_input_text)
                         if roadmap_result and isinstance(roadmap_result, dict): display_job_recommendation_and_roadmap(roadmap_result)
                         elif roadmap_result: logging.error(f"Job Rec unexpected format: {type(roadmap_result)}"); st.error("Rec generation unexpected format."); st.write(roadmap_result)
@@ -484,16 +459,15 @@ def main():
     with tab_dashboard:
         try:
             logging.info("Showing dashboard tab.")
-            show_dashboard() # Uses data/options from session_state
+            show_dashboard()
         except Exception as e:
             logging.error(f"Failed dashboard tab load: {e}", exc_info=True)
             st.error(f"Failed to load dashboard: {e}")
 
     # --- Footer ---
     st.markdown("---")
-    # Use CSS class for centering defined in GLOBAL_CSS
     st.markdown("<p class='footer'>Created by <a href='https://www.linkedin.com/in/gagan-rao' target='_blank'>Gagan N</a> | Powered by Google Gemini</p>", unsafe_allow_html=True)
 
 # --- Boilerplate ---
 if __name__ == "__main__":
-    main()      
+    main()

@@ -1,10 +1,10 @@
-# display.py (Part 1/2 - COMPLETE Corrected Code)
+# display.py (COMPLETE - Updated with Roadmap Separators)
 
 import streamlit as st
 import json
 import re
 
-# --- CSS Definition (as a string, keep definition here) ---
+# --- CSS Definition (Includes roadmap separator style) ---
 # This is applied ONCE in main.py now.
 GLOBAL_CSS = """
     <style>
@@ -20,28 +20,31 @@ GLOBAL_CSS = """
     .category-title { /* Used inside tabs/sections */ color: #3498db !important; font-size: 1.25rem; font-weight: bold; margin-bottom: 1rem; text-align: left; }
     /* Reduce gap between Streamlit's vertical blocks */
     div[data-testid="stVerticalBlock"] > div[style*="flex-direction: column;"] > div[data-testid="stVerticalBlock"] { gap: 0.8rem !important; }
-        /* ... other css ... */
     .footer { text-align: center; padding: 15px; margin-top: 30px; font-size: 0.9em; color: #888; width: 100%; }
-    /* ... other css ... */
 
     /* --- Buttons --- */
     .stButton>button { height: 3rem; font-size: 1.1rem; transition: transform 0.2s; border-radius: 8px; }
     .stButton>button:hover { transform: translateY(-2px); }
 
     /* --- Cards --- */
-    .analysis-card { background: rgba(100, 149, 237, 0.05); padding: 1.5rem; border-radius: 10px; border: 1px solid rgba(100, 149, 237, 0.2); margin-bottom: 1rem; } /* Used in main.py */
-    .feature-card { background: rgba(100, 149, 237, 0.05); padding: 1rem; border-radius: 8px; border: 1px solid rgba(100, 149, 237, 0.2); transition: transform 0.2s; margin-bottom: 1rem; } /* Used in main.py sidebar */
-    .suggestion-card, .suggestion-card-red, .suggestion-card-green { background-color: var(--background-color, #ffffff); padding: 1rem; border-radius: 8px; margin-bottom: 0.8rem; color: var(--text-color, #000000); border: 1px solid rgba(0, 0, 0, 0.05); box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+    .analysis-card { background: rgba(100, 149, 237, 0.05); padding: 1.5rem; border-radius: 10px; border: 1px solid rgba(100, 149, 237, 0.2); margin-bottom: 1rem; }
+    .feature-card { background: rgba(100, 149, 237, 0.05); padding: 1rem; border-radius: 8px; border: 1px solid rgba(100, 149, 237, 0.2); transition: transform 0.2s; margin-bottom: 1rem; }
+    .suggestion-card, .suggestion-card-red, .suggestion-card-green { background-color: var(--secondary-background-color, #f8f9fa); padding: 1rem; border-radius: 8px; margin-bottom: 0.8rem; color: var(--text-color, #000000); border: 1px solid rgba(0, 0, 0, 0.05); box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+    [data-theme="dark"] .suggestion-card,
+    [data-theme="dark"] .suggestion-card-red,
+    [data-theme="dark"] .suggestion-card-green { background-color: var(--secondary-background-color, #2f3136); border: 1px solid rgba(255,255,255,0.08); }
+
     .suggestion-card { border-left: 4px solid #3498db; }
     .suggestion-card-red { border-left: 4px solid #e74c3c; }
     .suggestion-card-green { border-left: 4px solid #2ecc71; }
     .suggestion-card p { margin-bottom: 0.5rem; }
     .suggestion-card p:last-child { margin-bottom: 0; }
-    .list-item { padding: 0.7rem; margin-bottom: 0.5rem; border-radius: 5px; background: var(--background-color, #ffffff); color: var(--text-color, #000000); border: 1px solid rgba(0, 0, 0, 0.1); }
+    .list-item { padding: 0.7rem; margin-bottom: 0.5rem; border-radius: 5px; background: var(--secondary-background-color, #f8f9fa); color: var(--text-color, #000000); border: 1px solid rgba(0, 0, 0, 0.1); }
+    [data-theme="dark"] .list-item { background: var(--secondary-background-color, #2f3136); border: 1px solid rgba(255,255,255,0.08); }
     /* Score card styles (Used in Standard Analysis) */
     .score-card { background: linear-gradient(135deg, #1e3799 0%, #0c2461 100%); padding: 1.5rem; border-radius: 15px; text-align: center; margin-bottom: 1.5rem; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
     .score-card h1, .score-card p, .score-card h3, .score-card h2 { color: white !important; margin: 0; padding: 0; }
-    .metric-card { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); padding: 1rem; border-radius: 10px; margin: 0.5rem; text-align: center; } /* For score card inner metrics */
+    .metric-card { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); padding: 1rem; border-radius: 10px; margin: 0.5rem; text-align: center; }
     .metric-card h3, .metric-card h2, .metric-card p { text-align: center; margin: 0; padding: 0; color: white !important; }
 
 
@@ -50,10 +53,11 @@ GLOBAL_CSS = """
     .ats-section-card h4 { color: white !important; font-size: 1.3rem; font-weight: bold; margin: 0; text-align: left; }
     .ats-check-container { background: var(--secondary-background-color, #f0f2f6); padding: 1.5rem; border-radius: 10px; margin-bottom: 1.5rem; border: 1px solid rgba(0, 0, 0, 0.08); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); }
     [data-theme="dark"] .ats-check-container { background: var(--secondary-background-color, #262730); border: 1px solid rgba(255, 255, 255, 0.1); }
-    .ats-check-container:empty { display: none !important; padding: 0 !important; margin: 0 !important; border: none !important; box-shadow: none !important; } /* Hide empty containers more aggressively */
+    .ats-check-container:empty { display: none !important; padding: 0 !important; margin: 0 !important; border: none !important; box-shadow: none !important; }
     .ats-check-title { color: #3498db !important; font-size: 1.15rem; font-weight: bold; margin-bottom: 1rem; padding-bottom: 0.3rem; border-bottom: 2px solid #3498db; text-align: left; }
     .ats-metric-row { display: flex; flex-wrap: wrap; justify-content: space-around; gap: 1rem; margin-bottom: 1rem; }
     .ats-metric-item { background: var(--background-color, #ffffff); padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid rgba(0, 0, 0, 0.1); flex: 1; min-width: 150px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); margin-bottom: 0.5rem; }
+    [data-theme="dark"] .ats-metric-item { background: var(--secondary-background-color, #2f3136); border: 1px solid rgba(255,255,255,0.08); }
     .ats-metric-item h5 { color: #3498db !important; font-size: 0.9rem; margin-bottom: 0.5rem; font-weight: bold; text-transform: uppercase; }
     .ats-metric-item p { color: var(--text-color, #000000) !important; font-size: 1.8rem; font-weight: bold; margin: 0; }
     .ats-metric-item small { display: block; font-size: 0.85em; color: var(--text-color, #555); margin-top: 0.5rem; line-height: 1.3; }
@@ -69,10 +73,42 @@ GLOBAL_CSS = """
     .roadmap-container { margin-bottom: 1.5rem; }
     .roadmap-timeline-title { color: #3498db !important; font-size: 1.2rem; font-weight: bold; margin-bottom: 1rem; padding-bottom: 0.3rem; border-bottom: 1px solid #eee; }
     [data-theme="dark"] .roadmap-timeline-title { border-bottom: 1px solid #444; }
-    .roadmap-goal-item { background: var(--secondary-background-color, #f8f9fa); padding: 1rem 1.5rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid rgba(0,0,0,0.05); }
-    [data-theme="dark"] .roadmap-goal-item { background: var(--secondary-background-color, #2f3136); border: 1px solid rgba(255,255,255,0.08); }
+
+    .roadmap-goal-item {
+        background: var(--secondary-background-color, #f8f9fa);
+        padding: 1rem 1.5rem;
+        border-radius: 0; /* Remove individual border radius */
+        margin-bottom: 0; /* Remove margin */
+        border: 1px solid rgba(0,0,0,0.05);
+        border-bottom: none; /* No bottom border on the item itself */
+    }
+    .roadmap-goal-item:first-of-type { border-radius: 8px 8px 0 0; } /* Top corners for the first item */
+    .roadmap-goal-item:last-of-type {
+        border-radius: 0 0 8px 8px; /* Bottom corners for the last item */
+        border-bottom: 1px solid rgba(0,0,0,0.05); /* Add bottom border only to the last */
+        margin-bottom: 1rem; /* Add margin after the last item in a list */
+    }
+    [data-theme="dark"] .roadmap-goal-item {
+        background: var(--secondary-background-color, #2f3136);
+        border-color: rgba(255,255,255,0.08);
+    }
+     [data-theme="dark"] .roadmap-goal-item:last-of-type {
+        border-bottom-color: rgba(255,255,255,0.08);
+     }
+
+    /* Custom HR style for Roadmap */
+    hr.roadmap-separator {
+        border: none; /* Remove default HR border */
+        height: 1px; /* Set height */
+        background-color: rgba(0, 0, 0, 0.1); /* Set separator color */
+        margin: 0; /* Reset margin */
+    }
+    [data-theme="dark"] hr.roadmap-separator {
+         background-color: rgba(255, 255, 255, 0.1); /* Dark theme color */
+    }
+
     .roadmap-goal-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;}
-    .roadmap-goal-title span { /* Icon */ font-size: 1.3em; line-height: 1; } /* Adjust line-height for icon alignment */
+    .roadmap-goal-title span { font-size: 1.3em; line-height: 1; }
     .roadmap-goal-description { font-size: 0.95em; margin-bottom: 0.7rem; line-height: 1.5; }
     .roadmap-goal-resources h6 { font-size: 0.9em; font-weight: bold; margin-bottom: 0.3rem; color: #5dade2;}
     .roadmap-goal-resources ul { list-style-type: none; padding-left: 0; margin-bottom: 0; }
@@ -86,49 +122,39 @@ GLOBAL_CSS = """
     .stExpander {
         border: 1px solid rgba(0, 0, 0, 0.1) !important;
         border-radius: 10px !important;
-        margin-bottom: 1rem !important; /* Add margin below expanders */
-        background-color: var(--background-color); /* Match background */
+        margin-bottom: 1rem !important;
+        background-color: var(--background-color);
     }
     [data-theme="dark"] .stExpander {
          border: 1px solid rgba(255, 255, 255, 0.1) !important;
     }
     .stExpander header {
         font-weight: bold;
-        font-size: 1.05em; /* Slightly larger expander header */
-        color: #3498db; /* Make expander header blue */
+        font-size: 1.05em;
+        color: #3498db;
     }
-    /* Target the content div *within* the expander */
     .stExpander div[data-testid="stExpanderDetails"] > div {
-         background-color: transparent !important; /* Make content background transparent */
-         padding-top: 0.5rem; /* Add slight padding to content */
+         background-color: transparent !important;
+         padding-top: 0.5rem;
     }
-    /* Override default Streamlit expander content padding which might cause issues */
     .stExpander .streamlit-expanderContent {
-        padding: 0 1rem 1rem 1rem; /* Adjust padding as needed */
+        padding: 0 1rem 1rem 1rem;
     }
         /* --- Title Styling --- */
     .main-title-gradient {
-        background: -webkit-linear-gradient(45deg, #5dade2, #a569bd); /* Brighter gradient */
+        background: -webkit-linear-gradient(45deg, #5dade2, #a569bd);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         font-weight: bold;
-        font-size: 2.8rem; /* Slightly adjusted size */
-        margin: 0; /* Remove default h1 margin */
-        padding: 0; /* Remove default h1 padding */
+        font-size: 2.8rem;
+        margin: 0; padding: 0;
     }
-    .tab-title-styled {
-        color: #5dade2; /* Use accent blue */
-        font-weight: bold;
-        margin-bottom: 0.2rem; /* Reduce space below title */
-    }
-    .tab-subtitle-styled {
-        color: #888;
-        font-style: italic;
-        margin-top: 0; /* Remove space above subtitle */
-    }
-    /* --- NEW: Box Styles for Titles --- */
+    .tab-title-styled { color: #5dade2; font-weight: bold; margin-bottom: 0.2rem; }
+    .tab-subtitle-styled { color: #888; font-style: italic; margin-top: 0; }
+
+    /* --- Box Styles for Titles --- */
     .main-title-box {
-        background: linear-gradient(135deg, #2c3e50 0%, #1e3799 100%); /* Darker blue gradient for app name */
+        background: linear-gradient(135deg, #2c3e50 0%, #1e3799 100%);
         color: white;
         padding: 1.5rem 2rem;
         border-radius: 12px;
@@ -137,39 +163,21 @@ GLOBAL_CSS = """
         box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
     }
     .main-title-box h1 {
-        margin: 0;
-        padding: 0;
-        font-size: 3.2rem; /* Slightly larger */
-        font-weight: bold;
-        text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2); /* Subtle text shadow */
-        color: white !important; /* Ensure text color overrides */
-        background: none; /* Remove previous gradient */
-        -webkit-background-clip: unset;
-        -webkit-text-fill-color: unset;
+        margin: 0; padding: 0; font-size: 3.2rem; font-weight: bold;
+        text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+        color: white !important; background: none;
+        -webkit-background-clip: unset; -webkit-text-fill-color: unset;
     }
-
     .tab-title-box {
-        background-color: #5dade2; /* Lighter accent blue */
-        color: white;
-        padding: 1rem 1.5rem;
-        border-radius: 10px;
-        text-align: center; /* Center the tab title */
-        margin-bottom: 0.8rem; /* Space before subtitle */
+        background-color: #5dade2; color: white;
+        padding: 1rem 1.5rem; border-radius: 10px;
+        text-align: center; margin-bottom: 0.8rem;
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     }
-    .tab-title-box h2 {
-        margin: 0;
-        padding: 0;
-        font-size: 1.8rem; /* Adjusted size */
-        font-weight: bold;
-        color: white !important; /* Ensure text color */
-    }
-    .tab-subtitle { /* Style for the subtitle below the box */
-        color: var(--text-color, #555); /* Use theme color or fallback */
-        font-style: italic;
-        text-align: center;
-        margin-bottom: 1.5rem;
-        font-size: 1.0em; /* Slightly larger subtitle */
+    .tab-title-box h2 { margin: 0; padding: 0; font-size: 1.8rem; font-weight: bold; color: white !important; }
+    .tab-subtitle {
+        color: var(--text-color, #555); font-style: italic;
+        text-align: center; margin-bottom: 1.5rem; font-size: 1.0em;
     }
     </style>
     """
@@ -177,12 +185,10 @@ GLOBAL_CSS = """
 # --- display_match_results ---
 def display_match_results(analysis):
     """Displays the standard resume vs. job description match analysis."""
-    # CSS applied globally in main.py
     if not analysis or not isinstance(analysis, dict):
         st.error("Invalid analysis data received for display.")
         return
 
-    # --- Overall Match Score and Metrics ---
     overall_score = analysis.get('overall_match', 'N/A')
     keyword_score = analysis.get('keyword_match_score', 'N/A')
     semantic_score = analysis.get('semantic_similarity_score', 'N/A')
@@ -210,7 +216,6 @@ def display_match_results(analysis):
         </div>
     """, unsafe_allow_html=True)
 
-    # --- ATS Keywords ---
     st.markdown('<h3 class="section-heading">🔑 Key Terms from Job Description</h3>', unsafe_allow_html=True)
     keywords = analysis.get('keywords_from_job_description', [])
     if keywords and isinstance(keywords, list):
@@ -219,7 +224,6 @@ def display_match_results(analysis):
     else:
         st.markdown('<div class="suggestion-card neutral-feedback">No specific keywords extracted.</div>', unsafe_allow_html=True)
 
-    # --- Category Breakdown ---
     st.markdown('<h3 class="section-heading" style="margin-top: 2rem;">📊 Category Match Scores</h3>', unsafe_allow_html=True)
     category_data_main = analysis.get('categories', {})
     categories = ['technical_skills', 'soft_skills', 'experience', 'education']
@@ -231,18 +235,16 @@ def display_match_results(analysis):
             match = category_data.get('match', 0)
             match_display = f"{match}%" if isinstance(match, (int, float)) else "N/A"
             st.markdown(f"""
-                <div class="metric-card theme-aware-text" style="background: rgba(52, 152, 219, 0.1); height: 100%;">
+                <div class="metric-card theme-aware-text" style="background: rgba(52, 152, 219, 0.1); height: 100%; border-radius: 8px;">
                     <h4 class="category-title" style="font-size: 1.1rem; margin-bottom: 0.5rem;">{cat_name}</h4>
-                    <h2 class="stat-counter" style="color: #3498db;">{match_display}</h2>
+                    <h2 class="stat-counter" style="color: #3498db; font-size: 2.5rem;">{match_display}</h2>
                 </div>
             """, unsafe_allow_html=True)
 
-    # --- Detailed Tabs ---
     st.markdown('<h3 class="section-heading" style="margin-top: 2rem;">📋 Detailed Analysis</h3>', unsafe_allow_html=True)
     tabs = st.tabs(["Technical Skills", "Soft Skills", "Experience", "Education", "ATS Summary", "Impact Analysis"])
 
-    # Technical Skills Tab
-    with tabs[0]:
+    with tabs[0]: # Technical Skills
         st.markdown('<h4 class="category-title">Technical Skills Analysis</h4>', unsafe_allow_html=True)
         category_data = category_data_main.get('technical_skills', {})
         col1, col2 = st.columns(2)
@@ -278,8 +280,7 @@ def display_match_results(analysis):
              for s in imps: st.markdown(f'<div class="suggestion-card">💡 {s}</div>', unsafe_allow_html=True)
         else: st.markdown('<div class="suggestion-card neutral-feedback">No general technical skill suggestions.</div>', unsafe_allow_html=True)
 
-    # Soft Skills Tab
-    with tabs[1]:
+    with tabs[1]: # Soft Skills
         st.markdown('<h4 class="category-title">Soft Skills Analysis</h4>', unsafe_allow_html=True)
         category_data = category_data_main.get('soft_skills', {})
         col1, col2 = st.columns(2)
@@ -308,8 +309,7 @@ def display_match_results(analysis):
              for s in imps: st.markdown(f'<div class="suggestion-card">💡 {s}</div>', unsafe_allow_html=True)
         else: st.markdown('<div class="suggestion-card neutral-feedback">No general soft skill suggestions.</div>', unsafe_allow_html=True)
 
-    # Experience Tab
-    with tabs[2]:
+    with tabs[2]: # Experience
         st.markdown('<h4 class="category-title">Experience Analysis</h4>', unsafe_allow_html=True)
         category_data = category_data_main.get('experience', {})
         st.markdown('<h5 class="subsection-heading">Strengths</h5>', unsafe_allow_html=True)
@@ -335,8 +335,7 @@ def display_match_results(analysis):
              for s in imps: st.markdown(f'<div class="suggestion-card">💡 {s}</div>', unsafe_allow_html=True)
         else: st.markdown('<div class="suggestion-card neutral-feedback">Focus on tailoring bullet points.</div>', unsafe_allow_html=True)
 
-    # Education Tab
-    with tabs[3]:
+    with tabs[3]: # Education
         st.markdown('<h4 class="category-title">Education Analysis</h4>', unsafe_allow_html=True)
         category_data = category_data_main.get('education', {})
         st.markdown('<h5 class="subsection-heading">Relevant Qualifications</h5>', unsafe_allow_html=True)
@@ -369,8 +368,7 @@ def display_match_results(analysis):
              for s in imps: st.markdown(f'<div class="suggestion-card">💡 {s}</div>', unsafe_allow_html=True)
         else: st.markdown('<div class="suggestion-card neutral-feedback">No general education suggestions.</div>', unsafe_allow_html=True)
 
-    # ATS Summary Tab
-    with tabs[4]:
+    with tabs[4]: # ATS Summary
         st.markdown('<h4 class="category-title">ATS Optimization Summary (Preview)</h4>', unsafe_allow_html=True)
         st.markdown('<div class="suggestion-card neutral-feedback">Run "ATS Optimization" tool for full breakdown.</div>', unsafe_allow_html=True)
         ats_summary = analysis.get('ats_optimization', {})
@@ -381,13 +379,16 @@ def display_match_results(analysis):
              preview_suggestions = kw_suggestions[:1] + fmt_issues[:1] + sec_improvements[:1]
              if preview_suggestions:
                   st.markdown('<h5 class="subsection-heading">Suggestions Snippet</h5>', unsafe_allow_html=True)
-                  for suggestion in preview_suggestions:
-                      if suggestion: st.markdown(f'<div class="suggestion-card">💡 {suggestion}</div>', unsafe_allow_html=True)
-             else: st.markdown('<div class="suggestion-card positive-feedback">✅ Basic ATS checks seem okay.</div>', unsafe_allow_html=True)
+                  valid_suggestions = [s for s in preview_suggestions if s]
+                  if valid_suggestions:
+                       for suggestion in valid_suggestions:
+                            st.markdown(f'<div class="suggestion-card">💡 {suggestion}</div>', unsafe_allow_html=True)
+                  else:
+                       st.markdown('<div class="suggestion-card positive-feedback">✅ Basic ATS checks seem okay based on preview.</div>', unsafe_allow_html=True)
+             else: st.markdown('<div class="suggestion-card positive-feedback">✅ Basic ATS checks seem okay based on preview.</div>', unsafe_allow_html=True)
         else: st.markdown('<div class="suggestion-card neutral-feedback">No ATS summary provided.</div>', unsafe_allow_html=True)
 
-    # Impact Analysis Tab
-    with tabs[5]:
+    with tabs[5]: # Impact Analysis
         st.markdown('<h4 class="category-title">Impact Analysis (Resume Content)</h4>', unsafe_allow_html=True)
         impact_data = analysis.get('impact_scoring', {})
         ach_met = impact_data.get("achievement_metrics", "N/A")
@@ -406,10 +407,10 @@ def display_match_results(analysis):
              for s in imps: st.markdown(f'<div class="suggestion-card">📈 {s}</div>', unsafe_allow_html=True)
         else: st.markdown('<div class="suggestion-card neutral-feedback">Focus on action verbs & quantifying results.</div>', unsafe_allow_html=True)
 
+
 # --- display_enhancement_suggestions ---
 def display_enhancement_suggestions(enhancements):
     """Displays detailed resume enhancement suggestions. Called by ATS display."""
-    # No separate CSS needed here
     if not enhancements or not isinstance(enhancements, dict):
         st.warning("No enhancement suggestions data available.")
         return
@@ -523,13 +524,10 @@ def display_enhancement_suggestions(enhancements):
         st.error(f"Error displaying enhancement suggestions: {str(e)}")
         st.exception(e)
 
-# --- End of Chunk 1/2 ---
-# display.py (Part 2/2 - COMPLETE Corrected Code)
 
-# --- display_linkedin_optimization (Revised for Better UI) ---
+# --- display_linkedin_optimization ---
 def display_linkedin_optimization(linkedin_suggestions):
     """Displays LinkedIn optimization suggestions with improved UI using expanders."""
-    # CSS applied globally in main.py
     if not linkedin_suggestions or not isinstance(linkedin_suggestions, dict):
         st.error("Unable to generate LinkedIn optimization suggestions or data invalid.")
         return
@@ -538,35 +536,27 @@ def display_linkedin_optimization(linkedin_suggestions):
         st.markdown('<div class="ats-section-card"><h4><span style="font-size: 1.5em;">💼</span> LinkedIn Profile Optimization</h4></div>', unsafe_allow_html=True)
         st.markdown("<p class='neutral-feedback' style='margin-bottom: 1.5rem;'>Actionable suggestions to enhance your LinkedIn presence based on your resume.</p>", unsafe_allow_html=True)
 
-        # Headline
-        headline_suggs = linkedin_suggestions.get("headline_suggestions", [])
-        if headline_suggs:
+        if headline_suggs := linkedin_suggestions.get("headline_suggestions"):
             with st.expander("✨ Headline Suggestions", expanded=True):
                 st.markdown("Craft a compelling, keyword-rich headline. Examples:")
                 for i, item in enumerate(headline_suggs):
                     st.markdown(f"**Example {i+1}:** `{item.get('headline', 'N/A')}`")
                     st.markdown(f"<small><i>Rationale: {item.get('rationale', 'N/A')}</i></small>", unsafe_allow_html=True)
                     if i < len(headline_suggs) - 1: st.markdown("---")
-        else:
-            st.markdown('<div class="suggestion-card neutral-feedback">No specific headline suggestions generated.</div>', unsafe_allow_html=True)
+        else: st.markdown('<div class="suggestion-card neutral-feedback">No specific headline suggestions.</div>', unsafe_allow_html=True)
 
-        # About Section
-        about_suggs = linkedin_suggestions.get("about_section_suggestions", [])
-        if about_suggs:
-            with st.expander("📝 About Section (Summary)", expanded=False):
+        if about_suggs := linkedin_suggestions.get("about_section_suggestions"):
+            with st.expander("📝 About Section (Summary)"):
                  st.markdown("Suggestions to make your 'About' section more engaging:")
                  for i, item in enumerate(about_suggs):
                      focus = item.get('type', 'General'); suggestion = item.get('suggestion', 'N/A'); ref = item.get('resume_reference')
                      st.markdown(f"**Focus:** {focus}"); st.markdown(f"**Suggestion:** {suggestion}")
                      if ref: st.markdown(f"<small><i>(Relates to: {ref})</i></small>", unsafe_allow_html=True)
                      if i < len(about_suggs) - 1: st.markdown("---")
-        else:
-             st.markdown('<div class="suggestion-card neutral-feedback">No specific "About" section suggestions.</div>', unsafe_allow_html=True)
+        else: st.markdown('<div class="suggestion-card neutral-feedback">No specific "About" suggestions.</div>', unsafe_allow_html=True)
 
-        # Experience Section
-        exp_suggs = linkedin_suggestions.get("experience_section_suggestions", [])
-        if exp_suggs:
-            with st.expander("🛠️ Experience Section", expanded=False):
+        if exp_suggs := linkedin_suggestions.get("experience_section_suggestions"):
+            with st.expander("🛠️ Experience Section"):
                 st.markdown("Enhance experience descriptions:")
                 for i, item in enumerate(exp_suggs):
                      role_company = item.get('job_title_company', 'N/A'); suggestions = item.get('suggestions', []); ref = item.get('resume_reference')
@@ -576,46 +566,34 @@ def display_linkedin_optimization(linkedin_suggestions):
                           for s in suggestions: st.markdown(f"- {s}")
                      if ref: st.markdown(f"<small><i>(Relates to: {ref})</i></small>", unsafe_allow_html=True)
                      if i < len(exp_suggs) - 1: st.markdown("---")
-        else:
-             st.markdown('<div class="suggestion-card neutral-feedback">No specific "Experience" section suggestions.</div>', unsafe_allow_html=True)
+        else: st.markdown('<div class="suggestion-card neutral-feedback">No specific "Experience" suggestions.</div>', unsafe_allow_html=True)
 
-        # Skills Section
-        skills_suggs = linkedin_suggestions.get("skills_section_suggestions", {})
-        if skills_suggs:
-             with st.expander("💡 Skills & Endorsements", expanded=False):
+        if skills_suggs := linkedin_suggestions.get("skills_section_suggestions"):
+             with st.expander("💡 Skills & Endorsements"):
                  skills_add = skills_suggs.get("skills_to_add", []); skills_prio = skills_suggs.get("skills_to_prioritize_endorsements", []); endorsement_strategy = skills_suggs.get('endorsement_strategy')
                  if skills_add: st.markdown("**Skills to Add/Ensure Listed (from Resume):**"); st.markdown(f"`{', '.join(skills_add)}`")
                  if skills_prio: st.markdown("**Prioritize Endorsements For:**"); st.markdown(f"`{', '.join(skills_prio)}`")
                  if endorsement_strategy: st.markdown("**Endorsement Strategy:**"); st.markdown(f"{endorsement_strategy}")
-        else:
-            st.markdown('<div class="suggestion-card neutral-feedback">No specific "Skills" suggestions.</div>', unsafe_allow_html=True)
+        else: st.markdown('<div class="suggestion-card neutral-feedback">No specific "Skills" suggestions.</div>', unsafe_allow_html=True)
 
-        # Education Section
-        edu_suggs = linkedin_suggestions.get('education_section_suggestions', [])
-        if edu_suggs:
-             with st.expander("🎓 Education Section", expanded=False):
+        if edu_suggs := linkedin_suggestions.get('education_section_suggestions'):
+             with st.expander("🎓 Education Section"):
                  st.markdown("Suggestions:")
                  for s in edu_suggs: st.markdown(f"- {s}")
-        else:
-             st.markdown('<div class="suggestion-card neutral-feedback">No specific "Education" suggestions.</div>', unsafe_allow_html=True)
+        else: st.markdown('<div class="suggestion-card neutral-feedback">No specific "Education" suggestions.</div>', unsafe_allow_html=True)
 
-        # Additional Sections
-        add_suggs = linkedin_suggestions.get("additional_sections_suggestions", [])
-        if add_suggs:
-             with st.expander("➕ Additional Sections (Projects, Certs, etc.)", expanded=False):
+        if add_suggs := linkedin_suggestions.get("additional_sections_suggestions"):
+             with st.expander("➕ Additional Sections (Projects, Certs, etc.)"):
                  st.markdown("Consider adding/enhancing these sections:")
                  for i, item in enumerate(add_suggs):
                      section = item.get('section_name', 'N/A'); suggestion = item.get('suggestion', 'N/A'); ref = item.get('resume_reference')
                      st.markdown(f"**Section:** {section}"); st.markdown(f"**Suggestion:** {suggestion}")
                      if ref: st.markdown(f"<small><i>(Relates to: {ref})</i></small>", unsafe_allow_html=True)
                      if i < len(add_suggs) - 1: st.markdown("---")
-        else:
-            st.markdown('<div class="suggestion-card neutral-feedback">No specific suggestions for additional sections.</div>', unsafe_allow_html=True)
+        else: st.markdown('<div class="suggestion-card neutral-feedback">No suggestions for additional sections.</div>', unsafe_allow_html=True)
 
-        # Overall Tips
-        overall_tips = linkedin_suggestions.get('overall_profile_tips', [])
-        if overall_tips:
-             with st.expander("🚀 Overall Profile Tips", expanded=False):
+        if overall_tips := linkedin_suggestions.get('overall_profile_tips'):
+             with st.expander("🚀 Overall Profile Tips"):
                  st.markdown("General tips:")
                  for tip in overall_tips: st.markdown(f"- {tip}")
 
@@ -624,10 +602,9 @@ def display_linkedin_optimization(linkedin_suggestions):
         st.exception(e)
 
 
-# --- display_interview_tips (Revised for Better UI) ---
+# --- display_interview_tips ---
 def display_interview_tips(interview_tips):
     """Displays personalized interview tips with improved UI."""
-    # CSS applied globally in main.py
     if not interview_tips or not isinstance(interview_tips, dict):
         st.error("Unable to generate interview preparation tips or data invalid.")
         return
@@ -635,55 +612,46 @@ def display_interview_tips(interview_tips):
         st.markdown('<div class="ats-section-card"><h4><span style="font-size: 1.5em;">🤝</span> Interview Preparation Tips</h4></div>', unsafe_allow_html=True)
         st.markdown("<p class='neutral-feedback' style='margin-bottom: 1.5rem;'>Tailored advice for this specific role, based on your resume and the job description.</p>", unsafe_allow_html=True)
 
-        focus_areas = interview_tips.get("preparation_focus_areas", [])
-        if focus_areas:
+        if focus_areas := interview_tips.get("preparation_focus_areas"):
              with st.expander("⭐ Key Preparation Focus Areas", expanded=True):
                   for i, item in enumerate(focus_areas):
                       st.markdown(f"**🎯 Focus:** {item.get('area', 'N/A')}")
                       st.markdown(f"**Action:** {item.get('action', 'N/A')}")
                       if i < len(focus_areas) - 1: st.markdown("---")
 
-        deep_dive = interview_tips.get("resume_deep_dive_prompts", [])
-        if deep_dive:
+        if deep_dive := interview_tips.get("resume_deep_dive_prompts"):
             with st.expander("📄 Resume Deep Dive: Be Ready For...", expanded=True):
                  st.markdown("Interviewers may ask for more detail on:")
                  for i, item in enumerate(deep_dive):
                      st.markdown(f"**Potential Prompt:** \"{item.get('prompt', 'N/A')}\"")
                      st.markdown(f"**Your Strategy:** {item.get('advice', 'N/A')}")
-                     ref = item.get('resume_reference')
-                     if ref: st.markdown(f"<small><i>(Refers to: {ref})</i></small>", unsafe_allow_html=True)
+                     if ref := item.get('resume_reference'): st.markdown(f"<small><i>(Refers to: {ref})</i></small>", unsafe_allow_html=True)
                      if i < len(deep_dive) - 1: st.markdown("---")
 
-        behavioral_qs = interview_tips.get("potential_behavioral_questions", [])
-        if behavioral_qs:
-             with st.expander("💬 Potential Behavioral Questions (Use STAR)", expanded=False):
+        if behavioral_qs := interview_tips.get("potential_behavioral_questions"):
+             with st.expander("💬 Potential Behavioral Questions (Use STAR)"):
                   st.markdown("Prepare STAR-based answers using specific resume examples:")
                   for i, item in enumerate(behavioral_qs):
                        st.markdown(f"**Question:** \"{item.get('question', 'N/A')}\"")
-                       source = item.get('resume_example_source')
-                       if source: st.markdown(f"<small><i>Consider examples from: {source}</i></small>", unsafe_allow_html=True)
-                       star = item.get('suggested_star_points', {})
-                       if star:
+                       if source := item.get('resume_example_source'): st.markdown(f"<small><i>Consider examples from: {source}</i></small>", unsafe_allow_html=True)
+                       if star := item.get('suggested_star_points'):
                            st.markdown(f"  - **S (Situation):** {star.get('Situation','...')}")
                            st.markdown(f"  - **T (Task):** {star.get('Task','...')}")
                            st.markdown(f"  - **A (Action):** {star.get('Action','...')}")
                            st.markdown(f"  - **R (Result):** {star.get('Result','...')}")
                        if i < len(behavioral_qs) - 1: st.markdown("---")
 
-        technical_qs = interview_tips.get("potential_technical_questions", [])
-        if technical_qs:
-             with st.expander("💻 Potential Role-Specific / Technical Questions", expanded=False):
+        if technical_qs := interview_tips.get("potential_technical_questions"):
+             with st.expander("💻 Potential Role-Specific / Technical Questions"):
                   st.markdown("Be ready to discuss technical aspects:")
                   for i, item in enumerate(technical_qs):
                        st.markdown(f"**Question:** \"{item.get('question', 'N/A')}\"")
                        st.markdown(f"**Response Strategy:** {item.get('advice', 'N/A')}")
-                       ref = item.get('resume_reference')
-                       if ref: st.markdown(f"<small><i>(Relates to: {ref})</i></small>", unsafe_allow_html=True)
+                       if ref := item.get('resume_reference'): st.markdown(f"<small><i>(Relates to: {ref})</i></small>", unsafe_allow_html=True)
                        if i < len(technical_qs) - 1: st.markdown("---")
 
-        ask_qs = interview_tips.get("questions_candidate_should_ask", [])
-        if ask_qs:
-             with st.expander("❓ Insightful Questions to Ask Them", expanded=False):
+        if ask_qs := interview_tips.get("questions_candidate_should_ask"):
+             with st.expander("❓ Insightful Questions to Ask Them"):
                   st.markdown("Asking thoughtful questions shows engagement:")
                   for i, item in enumerate(ask_qs):
                        st.markdown(f"**Question:** \"{item.get('question', 'N/A')}\"")
@@ -695,32 +663,29 @@ def display_interview_tips(interview_tips):
         st.exception(e)
 
 
-# --- display_career_recommendation (Fallback for simple text roadmap) ---
+# --- display_career_recommendation ---
 def display_career_recommendation(recommendation_text):
     """Displays simple text recommendation/roadmap with basic styling."""
-    # CSS applied globally in main.py
     try:
         st.markdown('<div class="ats-section-card"><h4>🗺️ Career Recommendation</h4></div>', unsafe_allow_html=True)
         formatted_text = recommendation_text.replace('\n\n', '<br><br>').replace('\n', '<br>')
         formatted_text = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', formatted_text)
         formatted_text = re.sub(r'(?m)^### (.*?)(<br>|$)', r'<h5>\1</h5>', formatted_text)
         formatted_text = re.sub(r'(?m)^#### (.*?)(<br>|$)', r'<h6>\1</h6>', formatted_text)
-        formatted_text = re.sub(r'(?m)^[\*\-]\s*(.*?)(<br>|$)', r'<li>\1</li>', formatted_text)
-        formatted_text = re.sub(r'(<li>.*?</li>)', r'<ul>\1</ul>', formatted_text, flags=re.DOTALL)
-        formatted_text = formatted_text.replace('<ul></ul>', '')
-
+        formatted_text = re.sub(r'(?m)^[\*\-]\s*(.*?)(?=<br>|$)', r'<li>\1</li>', formatted_text)
+        formatted_text = re.sub(r'(<li>.*?</li>\s*(?:<br>)?)+', r'<ul>\g<0></ul>', formatted_text, flags=re.DOTALL)
+        formatted_text = formatted_text.replace('<ul><br>', '<ul>').replace('<br></ul>', '</ul>').replace('<ul></ul>', '')
         st.markdown(f'<div class="ats-check-container">{formatted_text}</div>', unsafe_allow_html=True)
     except Exception as e:
         st.error(f"Error displaying simple career recommendation text: {e}")
         st.text(recommendation_text)
 
+# --- End of Chunk 1/2 ---
+# display.py (COMPLETE - Part 2/2)
 
 # --- display_job_recommendation_and_roadmap ---
-# --- display_job_recommendation_and_roadmap ---
-# (UPDATED Resource Rendering)
 def display_job_recommendation_and_roadmap(result):
-    """Displays the combined job role and roadmap (Handles JSON from job_recommendation.py)."""
-    # CSS applied globally in main.py
+    """Displays the combined job role and roadmap."""
     if not result or not isinstance(result, dict):
         st.error("No job recommendation data received or data is invalid.")
         return
@@ -728,7 +693,6 @@ def display_job_recommendation_and_roadmap(result):
     try:
         st.markdown('<h3 class="section-heading">🎯 Job Recommendation & Roadmap</h3>', unsafe_allow_html=True)
 
-        # Recommended Role & Justification Expander
         with st.expander("Recommended Role & Justification", expanded=True):
              rec_role = result.get('recommended_role', 'N/A')
              justification = result.get('justification', 'No justification provided.')
@@ -736,12 +700,9 @@ def display_job_recommendation_and_roadmap(result):
              st.markdown("**Justification:**")
              st.markdown(f"<div class='suggestion-card'>{justification}</div>", unsafe_allow_html=True)
 
-        # Detailed Roadmap Expander
         roadmap_data = result.get("roadmap", {})
         if roadmap_data:
             with st.expander("Detailed Career Roadmap", expanded=True):
-
-                # --- Timeline Goals ---
                 timeline_tabs = st.tabs(["➡️ Short Term", "⏳ Mid Term", "🚀 Long Term"])
                 timeframes = ["short_term", "mid_term", "long_term"]
 
@@ -749,46 +710,40 @@ def display_job_recommendation_and_roadmap(result):
                      with timeline_tabs[i]:
                           goals = roadmap_data.get(timeframe, [])
                           if goals:
-                              for goal in goals:
+                              goal_count = len(goals)
+                              for idx, goal in enumerate(goals):
                                   st.markdown('<div class="roadmap-goal-item">', unsafe_allow_html=True)
-                                  # Use a default icon if not provided
                                   icon = goal.get('icon', '🎯' if timeframe == "short_term" else ('⏳' if timeframe == "mid_term" else '🚀'))
                                   title = goal.get('title', 'Goal')
                                   st.markdown(f'<div class="roadmap-goal-title"><span>{icon}</span> {title}</div>', unsafe_allow_html=True)
-                                  st.markdown(f'<div class="roadmap-goal-description">{goal.get("description", "No description provided.")}</div>', unsafe_allow_html=True)
+                                  st.markdown(f'<div class="roadmap-goal-description">{goal.get("description", "N/A")}</div>', unsafe_allow_html=True)
 
-                                  resources = goal.get("resources", [])
-                                  if resources:
+                                  if resources := goal.get("resources"):
                                       st.markdown('<div class="roadmap-goal-resources"><h6>Resources:</h6><ul>', unsafe_allow_html=True)
-                                      # --- UPDATED RESOURCE LOOP ---
                                       for res in resources:
-                                          res_title = res.get('title', '[Resource Details]') # Default if title missing
-                                          res_url = res.get('url') # Get URL, could be None
-                                          if res_url and res_url != "#": # If valid URL exists
-                                              # Display as a clickable link
-                                              st.markdown(f'<li><a href="{res_url}" target="_blank">{res_title}</a></li>', unsafe_allow_html=True)
-                                          else: # If no URL or URL is just "#" or None
-                                              # Display the title plainly as a list item
-                                              st.markdown(f'<li>{res_title}</li>', unsafe_allow_html=True)
-                                      # --- END UPDATED RESOURCE LOOP ---
+                                          res_title = res.get('title', '[Resource]')
+                                          if res_url := res.get('url'):
+                                              if res_url != "#": st.markdown(f'<li><a href="{res_url}" target="_blank">{res_title}</a></li>', unsafe_allow_html=True)
+                                              else: st.markdown(f'<li>{res_title}</li>', unsafe_allow_html=True) # Display title if URL is #
+                                          else: st.markdown(f'<li>{res_title}</li>', unsafe_allow_html=True) # Display title if URL is missing
                                       st.markdown('</ul></div>', unsafe_allow_html=True)
                                   st.markdown('</div>', unsafe_allow_html=True) # end roadmap-goal-item
+                                  # Add HR separator if not the last item
+                                  if idx < goal_count - 1:
+                                      st.markdown('<hr class="roadmap-separator">', unsafe_allow_html=True)
                           else:
                               st.markdown(f'<p class="neutral-feedback">No specific goals outlined for {timeframe.replace("_", " ")}.</p>', unsafe_allow_html=True)
 
                 # --- Skills and Technologies ---
-                skills_tech = roadmap_data.get("skills_technologies", [])
-                if skills_tech:
+                if skills_tech := roadmap_data.get("skills_technologies"):
                     st.markdown('<h5 class="subsection-heading">Key Skills and Technologies to Develop</h5>', unsafe_allow_html=True)
-                    # Adjust columns based on number of skill areas, max 3
                     num_cols = min(len(skills_tech), 3)
-                    cols = st.columns(num_cols) if num_cols > 0 else [st] # Use st if no cols
+                    cols = st.columns(num_cols) if num_cols > 0 else [st]
                     for idx, area in enumerate(skills_tech):
                         with cols[idx % num_cols]:
                             skill_area_title = area.get('skill_area','Skill Area')
                             st.markdown(f"<div class='skills-category'><h6>{skill_area_title}</h6>", unsafe_allow_html=True)
-                            skills = area.get("skills", [])
-                            if skills:
+                            if skills := area.get("skills"):
                                  st.markdown("<ul>" + "".join([f"<li>{skill}</li>" for skill in skills]) + "</ul>", unsafe_allow_html=True)
                             else: st.markdown("<ul><li>N/A</li></ul>", unsafe_allow_html=True)
                             st.markdown("</div>", unsafe_allow_html=True)
@@ -798,28 +753,31 @@ def display_job_recommendation_and_roadmap(result):
             st.warning("Roadmap details (timeline, skills) not found in the result.")
 
         # --- Certifications ---
-        certifications = result.get("certifications", [])
-        if certifications:
+        if certifications := result.get("certifications"):
              with st.expander("Recommended Certifications"):
-                 for cert in certifications:
-                      st.markdown('<div class="roadmap-goal-item">', unsafe_allow_html=True) # Reuse goal item style
+                 cert_count = len(certifications)
+                 for idx, cert in enumerate(certifications):
+                      st.markdown('<div class="roadmap-goal-item">', unsafe_allow_html=True)
                       title = cert.get('title','Certification')
                       desc = cert.get('description', 'N/A')
                       url = cert.get('url', '#')
                       st.markdown(f"**📜 {title}**")
                       st.markdown(f"<div class='roadmap-goal-description'>{desc}</div>", unsafe_allow_html=True)
-                      if url and url != "#": st.markdown(f"**Learn More:** [{title} Link]({url})")
+                      if url and url != "#": st.markdown(f"**Learn More:** [{title} Link]({url})", unsafe_allow_html=True)
                       st.markdown('</div>', unsafe_allow_html=True)
+                      if idx < cert_count - 1:
+                          st.markdown('<hr class="roadmap-separator">', unsafe_allow_html=True)
+
         else:
-             st.markdown('<p class="neutral-feedback">No specific certifications recommended.</p>', unsafe_allow_html=True)
+             st.markdown('<p class="neutral-feedback" style="margin-top: 1rem;">No specific certifications recommended.</p>', unsafe_allow_html=True)
 
 
         # --- Projects ---
-        projects = result.get("projects", [])
-        if projects:
+        if projects := result.get("projects"):
              with st.expander("Suggested Projects"):
-                 for project in projects:
-                      st.markdown('<div class="roadmap-goal-item">', unsafe_allow_html=True) # Reuse goal item style
+                 project_count = len(projects)
+                 for idx, project in enumerate(projects):
+                      st.markdown('<div class="roadmap-goal-item">', unsafe_allow_html=True)
                       title = project.get('title','Project')
                       level = project.get('level', 'N/A')
                       desc = project.get('description','N/A')
@@ -829,15 +787,19 @@ def display_job_recommendation_and_roadmap(result):
                       st.markdown(f"**💡 {title} ({level})**")
                       st.markdown(f"<div class='roadmap-goal-description'>{desc}</div>", unsafe_allow_html=True)
                       if tech: st.markdown(f"**Technologies:** `{', '.join(tech)}`")
-                      if url: st.markdown(f"**Example/Info:** {url}")
+                      if url: st.markdown(f"**Example/Info:** {url}") # Display URL plainly if present
                       st.markdown('</div>', unsafe_allow_html=True)
+                      if idx < project_count - 1:
+                           st.markdown('<hr class="roadmap-separator">', unsafe_allow_html=True)
         else:
-            st.markdown('<p class="neutral-feedback">No specific projects suggested.</p>', unsafe_allow_html=True)
+            st.markdown('<p class="neutral-feedback" style="margin-top: 1rem;">No specific projects suggested.</p>', unsafe_allow_html=True)
 
 
         # --- Download Roadmap ---
         try:
-            rec_role_filename = rec_role.replace(' ','_').replace('/','-')[:25] # Sanitize for filename
+            # Ensure rec_role is defined before using it in filename
+            if 'rec_role' not in locals(): rec_role = result.get('recommended_role', 'recommendation')
+            rec_role_filename = rec_role.replace(' ','_').replace('/','-')[:25]
             result_json = json.dumps(result, indent=2)
             st.download_button("⬇️ Download Recommendation (JSON)", result_json, f"job_recommendation_{rec_role_filename}.json", "application/json", key="download_job_rec_roadmap")
         except Exception as e: st.error(f"Could not prepare recommendation for download: {e}")
@@ -845,15 +807,12 @@ def display_job_recommendation_and_roadmap(result):
     except Exception as e:
         st.error(f"Error displaying job recommendation: {e}")
         st.exception(e)
-        # Fallback display of raw data if rendering fails
         st.json(result if isinstance(result, dict) else {"error": "Data is not a dictionary"})
 
 
-# --- display_career_roadmap (FIXED for structured JSON from career_roadmap.py) ---
-# (UPDATED Resource Rendering)
+# --- display_career_roadmap ---
 def display_career_roadmap(roadmap_data):
     """Displays the structured career roadmap JSON data in a user-friendly format."""
-    # CSS applied globally in main.py
     if not roadmap_data or not isinstance(roadmap_data, dict):
         st.error("Invalid or missing roadmap data received.")
         if isinstance(roadmap_data, dict) and "error" in roadmap_data:
@@ -863,74 +822,63 @@ def display_career_roadmap(roadmap_data):
     try:
         st.markdown('<div class="ats-section-card"><h4><span style="font-size: 1.5em;">🗺️</span> Your Personalized Career Roadmap</h4></div>', unsafe_allow_html=True)
 
-        # --- Recommended Focus & Justification ---
         rec_focus = roadmap_data.get('recommended_focus_area', 'N/A')
         justification = roadmap_data.get('justification', 'N/A')
         st.markdown("##### Recommended Focus & Justification")
         st.markdown(f"<div class='suggestion-card' style='margin-bottom: 1.5rem;'><b>Focus Area:</b> {rec_focus}<br><b>Justification:</b> {justification}</div>", unsafe_allow_html=True)
 
-        # --- Roadmap Timeline ---
         roadmap = roadmap_data.get('roadmap', {})
         if roadmap:
             st.markdown("##### Roadmap Timeline")
             timeline_tabs = st.tabs(["➡️ Short Term (1-2 Yrs)", "⏳ Mid Term (3-5 Yrs)", "🚀 Long Term (5+ Yrs)"])
-
-            # Define the keys EXACTLY as specified in the career_roadmap.py prompt's JSON format
             timeframe_keys = ["short_term (1-2 Years)", "mid_term (3-5 Years)", "long_term (5+ Years)"]
 
             for i, key in enumerate(timeframe_keys):
                 with timeline_tabs[i]:
-                    goals = roadmap.get(key, []) # Get goals using the exact key name
+                    goals = roadmap.get(key, [])
                     if goals:
-                        for goal in goals:
+                        goal_count = len(goals)
+                        for idx, goal in enumerate(goals):
                             st.markdown('<div class="roadmap-goal-item">', unsafe_allow_html=True)
                             icon = goal.get('icon', '🎯'); title = goal.get('title', 'Goal')
                             desc = goal.get("description", "")
                             st.markdown(f'<div class="roadmap-goal-title"><span>{icon}</span> {title}</div>', unsafe_allow_html=True)
                             st.markdown(f'<div class="roadmap-goal-description">{desc}</div>', unsafe_allow_html=True)
 
-                            resources = goal.get("resources", [])
-                            if resources:
+                            if resources := goal.get("resources"):
                                 st.markdown('<div class="roadmap-goal-resources"><h6>Resources:</h6><ul>', unsafe_allow_html=True)
-                                # --- UPDATED RESOURCE LOOP ---
                                 for res in resources:
-                                    res_title = res.get('title', '[Resource Details]') # Default if title missing
-                                    res_url = res.get('url') # Get URL, could be None
-                                    if res_url and res_url != "#": # If valid URL exists
-                                        # Display as a clickable link
-                                        st.markdown(f'<li><a href="{res_url}" target="_blank">{res_title}</a></li>', unsafe_allow_html=True)
-                                    else: # If no URL or URL is just "#" or None
-                                        # Display the title plainly as a list item
-                                        st.markdown(f'<li>{res_title}</li>', unsafe_allow_html=True)
-                                # --- END UPDATED RESOURCE LOOP ---
+                                    res_title = res.get('title', '[Resource]')
+                                    if res_url := res.get('url'):
+                                        if res_url != "#": st.markdown(f'<li><a href="{res_url}" target="_blank">{res_title}</a></li>', unsafe_allow_html=True)
+                                        else: st.markdown(f'<li>{res_title}</li>', unsafe_allow_html=True)
+                                    else: st.markdown(f'<li>{res_title}</li>', unsafe_allow_html=True)
                                 st.markdown('</ul></div>', unsafe_allow_html=True)
                             st.markdown('</div>', unsafe_allow_html=True) # end goal-item
+                            if idx < goal_count - 1:
+                                st.markdown('<hr class="roadmap-separator">', unsafe_allow_html=True)
                     else:
                         st.markdown(f'<p class="neutral-feedback">No specific goals outlined for the {key.split("(")[0].strip()}.</p>', unsafe_allow_html=True)
         else:
             st.warning("Roadmap timeline details not found in the generated data.")
 
-        # --- Key Skills to Develop ---
-        skills_dev = roadmap_data.get('key_skills_to_develop', [])
-        if skills_dev:
+        if skills_dev := roadmap_data.get('key_skills_to_develop'):
             st.markdown('<h5 class="subsection-heading">Key Skills to Develop</h5>', unsafe_allow_html=True)
-            num_cols = min(len(skills_dev), 2) # Use max 2 columns for skills
+            num_cols = min(len(skills_dev), 2)
             cols = st.columns(num_cols) if num_cols > 0 else [st]
             for idx, category_data in enumerate(skills_dev):
                  with cols[idx % num_cols]:
                      category_title = category_data.get('category', 'Skills')
                      st.markdown(f"<div class='skills-category'><h6>{category_title}</h6>", unsafe_allow_html=True)
-                     skills = category_data.get('skills', [])
-                     if skills:
+                     if skills := category_data.get('skills'):
                           st.markdown("<ul>" + "".join([f"<li>{skill}</li>" for skill in skills]) + "</ul>", unsafe_allow_html=True)
                      else: st.markdown("<ul><li>N/A</li></ul>", unsafe_allow_html=True)
                      st.markdown("</div>", unsafe_allow_html=True)
         else:
             st.warning("Key skills to develop not specified.")
 
-        # --- Download Button ---
         try:
-            focus_filename = rec_focus.replace(' ','_').replace('/','-')[:25] # Sanitize for filename
+            focus_filename = rec_focus.replace(' ','_').replace('/','-')[:25]
             roadmap_json_str = json.dumps(roadmap_data, indent=2)
             st.download_button("⬇️ Download Roadmap Data (JSON)", roadmap_json_str, f"career_roadmap_{focus_filename}.json", "application/json", key="download_roadmap_json")
         except Exception as e: st.error(f"Could not prepare roadmap data for download: {e}")
@@ -938,14 +886,12 @@ def display_career_roadmap(roadmap_data):
     except Exception as e:
         st.error(f"Error displaying structured career roadmap: {str(e)}")
         st.exception(e)
-        # Fallback display of raw data if rendering fails
         st.json(roadmap_data if isinstance(roadmap_data, dict) else {"error": "Data is not a dictionary"})
 
 
 # --- display_ats_optimization_results ---
 def display_ats_optimization_results(results):
     """Displays the comprehensive ATS optimization results using a tabbed interface."""
-    # CSS applied globally in main.py
     if not results or not isinstance(results, dict):
         st.warning("No ATS optimization results available to display.")
         return
@@ -964,10 +910,9 @@ def display_ats_optimization_results(results):
                 grammar_data = ai_checks.get("spelling_grammar", {}); errors = grammar_data.get("errors", []); message = grammar_data.get("message", "")
                 if errors:
                     st.markdown('<p class="negative-feedback">Potential errors found:</p>', unsafe_allow_html=True)
-                    with st.expander("View Details", expanded=len(errors) < 4):
-                        for error in errors:
-                             original = error.get('original','N/A'); corrected = error.get('corrected','N/A'); explanation = error.get('explanation', 'N/A')
-                             st.markdown(f"""<div class="correction-block"><span class="original">Original: {original}</span><span class="corrected">Corrected: {corrected}</span><span class="explanation">Explanation: {explanation}</span></div>""", unsafe_allow_html=True)
+                    for error in errors:
+                         original = error.get('original','N/A'); corrected = error.get('corrected','N/A'); explanation = error.get('explanation', 'N/A')
+                         st.markdown(f"""<div class="correction-block"><span class="original">Original: {original}</span><span class="corrected">Corrected: {corrected}</span><span class="explanation">Explanation: {explanation}</span></div>""", unsafe_allow_html=True)
                 elif message: st.markdown(f'<div class="suggestion-card-green">✅ {message}</div>', unsafe_allow_html=True)
                 else: st.markdown(f'<div class="suggestion-card-green">✅ No significant errors found.</div>', unsafe_allow_html=True)
             with st.container(): # Word Repetition
@@ -1012,16 +957,16 @@ def display_ats_optimization_results(results):
                 else: st.markdown(f'<div class="suggestion-card-green">✅ Good job quantifying impact.</div>', unsafe_allow_html=True)
 
         with tab_structure:
-            st.markdown('<div class="ats-section-card" style="margin-bottom: 0.5rem;"><h4>Structure, Formatting & Brevity</h4></div>', unsafe_allow_html=True)
-            st.markdown('<div class="ats-metric-row">', unsafe_allow_html=True)
-            parse_rate = standard_checks.get('parse_rate', 'N/A'); pr_d = f"{parse_rate}%" if isinstance(parse_rate, int) else "N/A"; pr_help = "Est. ATS readability."
-            st.markdown(f'<div class="ats-metric-item"><h5>ATS Parse Rate (Est.)</h5><p>{pr_d}</p><small>{pr_help}</small></div>', unsafe_allow_html=True)
-            wc = standard_checks.get('resume_word_count', 'N/A'); np = layout_data.get('num_pages', 'N/A'); len_d = f"{wc} words" if isinstance(wc, int) else "N/A"; pg_d = f"{np} page(s)" if isinstance(np, (int, float)) and np > 0 else "N/A"; len_help = standard_checks.get("resume_length_feedback", "Aim 1-2 pages.")
-            st.markdown(f'<div class="ats-metric-item"><h5>Length</h5><p>{len_d} / {pg_d}</p><small>{len_help}</small></div>', unsafe_allow_html=True)
-            fs = layout_data.get('formatting_score', 'N/A'); fs_d = f"{fs}%" if isinstance(fs, int) else "N/A"; fs_help = "Est. ATS-friendly formatting."
-            st.markdown(f'<div class="ats-metric-item"><h5>Formatting Score (Est.)</h5><p>{fs_d}</p><small>{fs_help}</small></div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
-            with st.container(): # Bullet Point Length
+             st.markdown('<div class="ats-section-card" style="margin-bottom: 0.5rem;"><h4>Structure, Formatting & Brevity</h4></div>', unsafe_allow_html=True)
+             st.markdown('<div class="ats-metric-row">', unsafe_allow_html=True)
+             parse_rate = standard_checks.get('parse_rate', 'N/A'); pr_d = f"{parse_rate}%" if isinstance(parse_rate, int) else "N/A"; pr_help = "Est. ATS readability."
+             st.markdown(f'<div class="ats-metric-item"><h5>ATS Parse Rate (Est.)</h5><p>{pr_d}</p><small>{pr_help}</small></div>', unsafe_allow_html=True)
+             wc = standard_checks.get('resume_word_count', 'N/A'); np = layout_data.get('num_pages', 'N/A'); len_d = f"{wc} words" if isinstance(wc, int) else "N/A"; pg_d = f"{np} page(s)" if isinstance(np, (int, float)) and np > 0 else "N/A"; len_help = standard_checks.get("resume_length_feedback", "Aim 1-2 pages.")
+             st.markdown(f'<div class="ats-metric-item"><h5>Length</h5><p>{len_d} / {pg_d}</p><small>{len_help}</small></div>', unsafe_allow_html=True)
+             fs = layout_data.get('formatting_score', 'N/A'); fs_d = f"{fs}%" if isinstance(fs, int) else "N/A"; fs_help = "Est. ATS-friendly formatting."
+             st.markdown(f'<div class="ats-metric-item"><h5>Formatting Score (Est.)</h5><p>{fs_d}</p><small>{fs_help}</small></div>', unsafe_allow_html=True)
+             st.markdown('</div>', unsafe_allow_html=True)
+             with st.container(): # Bullet Point Length
                 st.markdown('<div class="ats-check-title">Bullet Point Length</div>', unsafe_allow_html=True)
                 long_bullet_data = ai_checks.get("long_bullets", {}); long_bullets_found = long_bullet_data.get("long_bullets", []); message = long_bullet_data.get("message", "")
                 if long_bullets_found:
@@ -1032,7 +977,7 @@ def display_ats_optimization_results(results):
                              st.markdown(f"""<div class="suggestion-card"><p><strong>Bullet:</strong> {bullet}</p><p><strong>Suggestion:</strong> {suggestion}</p></div>""", unsafe_allow_html=True)
                 elif message: st.markdown(f'<div class="suggestion-card-green">✅ {message}</div>', unsafe_allow_html=True)
                 else: st.markdown(f'<div class="suggestion-card-green">✅ Bullets appear concise.</div>', unsafe_allow_html=True)
-            with st.container(): # Layout Issues
+             with st.container(): # Layout Issues
                 st.markdown('<div class="ats-check-title">Layout & Formatting Issues</div>', unsafe_allow_html=True)
                 layout_issues = layout_data.get("layout_issues", [])
                 if layout_issues:
@@ -1042,8 +987,8 @@ def display_ats_optimization_results(results):
                 else: st.markdown('<div class="suggestion-card-green">✅ No major layout issues detected.</div>', unsafe_allow_html=True)
 
         with tab_completeness:
-            st.markdown('<div class="ats-section-card" style="margin-bottom: 0.5rem;"><h4>Resume Section Completeness</h4></div>', unsafe_allow_html=True)
-            with st.container(): # Contact Information
+             st.markdown('<div class="ats-section-card" style="margin-bottom: 0.5rem;"><h4>Resume Section Completeness</h4></div>', unsafe_allow_html=True)
+             with st.container(): # Contact Information
                 st.markdown('<div class="ats-check-title">Contact Information</div>', unsafe_allow_html=True)
                 contact_info = standard_checks.get("contact_information", {})
                 has_email = 'email_address' in contact_info and contact_info['email_address']
@@ -1051,7 +996,7 @@ def display_ats_optimization_results(results):
                 if has_email and has_phone: st.markdown('<div class="suggestion-card-green">✅ Essential contact info (Email & Phone) found.</div>', unsafe_allow_html=True)
                 elif has_email or has_phone: missing = "Phone" if not has_phone else "Email"; st.markdown(f'<div class="suggestion-card-red">⚠️ Missing essential contact info ({missing}).</div>', unsafe_allow_html=True)
                 else: st.markdown('<div class="suggestion-card-red">❌ Crucial contact info (Email & Phone) missing.</div>', unsafe_allow_html=True)
-                # Display detected details
+
                 details_html = "<h6>Detected Information:</h6><ul>"
                 if contact_info.get('email_address'):
                     email_text = f"<li>**Email:** {contact_info['email_address']}"
@@ -1062,11 +1007,11 @@ def display_ats_optimization_results(results):
                 else: details_html += "<li><span class='negative-feedback'>**Phone:** Missing/Not Found</span></li>"
                 if contact_info.get('location'): details_html += f"<li>**Location:** {contact_info['location']}</li>"
                 if contact_info.get('linkedin_url'): details_html += f"<li>**LinkedIn:** {contact_info['linkedin_url']}</li>"
-                if contact_info.get('github_url'): details_html += f"<li>**GitHub:** {contact_info['github_url']}</li>" # Added GitHub
+                if contact_info.get('github_url'): details_html += f"<li>**GitHub:** {contact_info['github_url']}</li>"
                 if contact_info.get('portfolio_url'): details_html += f"<li>**Portfolio/Website:** {contact_info['portfolio_url']}</li>"
                 details_html += "</ul>"
                 st.markdown(details_html, unsafe_allow_html=True)
-            with st.container(): # Essential Sections
+             with st.container(): # Essential Sections
                 st.markdown('<div class="ats-check-title">Essential Sections</div>', unsafe_allow_html=True)
                 sections_found = standard_checks.get("essential_sections_found", []); sections_missing = standard_checks.get("essential_sections_missing", [])
                 if not sections_missing:
@@ -1075,7 +1020,7 @@ def display_ats_optimization_results(results):
                 else:
                     st.markdown(f'<div class="suggestion-card-red">⚠️ Potentially Missing Sections: <strong>{", ".join(sections_missing)}</strong>. Use clear titles.</div>', unsafe_allow_html=True)
                     if sections_found: st.markdown(f'<p class="neutral-feedback" style="font-size:0.9em;"><i>Detected: {", ".join(sections_found)}.</i></p>', unsafe_allow_html=True)
-            with st.container(): # Hobbies/Interests
+             with st.container(): # Hobbies/Interests
                 st.markdown('<div class="ats-check-title">Hobbies / Interests / Personal</div>', unsafe_allow_html=True)
                 hobbies_data = ai_checks.get("hobbies", {}); found = hobbies_data.get("found", False); analysis = hobbies_data.get("analysis", ""); suggestions = hobbies_data.get("suggestions", [])
                 if found:
@@ -1088,11 +1033,12 @@ def display_ats_optimization_results(results):
                              for s in suggestions: st.markdown(f"- {s}")
 
         with tab_enhance:
-            st.markdown('<div class="ats-section-card" style="margin-bottom: 0.5rem;"><h4>✨ AI-Powered Enhancement Suggestions</h4></div>', unsafe_allow_html=True)
-            st.markdown("<p class='neutral-feedback' style='font-size:0.95em; margin-bottom: 1rem;'><i>Detailed suggestions to improve resume content, structure, and impact.</i></p>", unsafe_allow_html=True)
-            if enhancement_suggestions and isinstance(enhancement_suggestions, dict) and enhancement_suggestions.get('summary_section'): # Check if valid dict
+             st.markdown('<div class="ats-section-card" style="margin-bottom: 0.5rem;"><h4>✨ AI-Powered Enhancement Suggestions</h4></div>', unsafe_allow_html=True)
+             st.markdown("<p class='neutral-feedback' style='font-size:0.95em; margin-bottom: 1rem;'><i>Detailed suggestions to improve resume content, structure, and impact.</i></p>", unsafe_allow_html=True)
+             if enhancement_suggestions and isinstance(enhancement_suggestions, dict) and enhancement_suggestions.get('summary_section'):
                  with st.container(): display_enhancement_suggestions(enhancement_suggestions)
-            else: st.warning("No specific AI enhancement suggestions were generated or data is invalid.")
+             else: st.warning("No specific AI enhancement suggestions were generated or data is invalid.")
+
         st.markdown("---")
 
     except Exception as e:

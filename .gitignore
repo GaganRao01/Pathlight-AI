@@ -1,0 +1,35 @@
+# --- Virtual Environment ---
+# Ignore the entire virtual environment directory
+venv/
+.venv/
+
+# --- Secrets ---
+# IMPORTANT: Ignore the secrets file used for local testing
+.streamlit/secrets.toml
+# Also ignore if accidentally created at root
+secrets.toml
+
+# --- IDE/Editor Settings ---
+# Ignore VS Code specific settings
+.vscode/
+
+# --- Python Cache & Temp Files ---
+# Ignore compiled Python files and cache folders
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+# Ignore mypy cache if you use it
+.mypy_cache/
+
+# --- OS Specific Files ---
+# Ignore macOS specific files
+.DS_Store
+# Ignore Windows specific files
+Thumbs.db
+
+# --- Optional: Add if relevant ---
+# Ignore environment variable files if you use them
+# .env
+# Ignore log files
+# *.log

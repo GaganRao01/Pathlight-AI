@@ -1,16 +1,18 @@
-# Pathlight AI - Career Suite
+# <div align="center">Pathlight AI - Career Suite</div>
 
-![Pathlight AI](https://img.shields.io/badge/Pathlight-AI-3498db)
-![Version](https://img.shields.io/badge/Version-1.3-blue)
-![Python](https://img.shields.io/badge/Python-3.8+-green)
-![Streamlit](https://img.shields.io/badge/Streamlit-1.43.2-red)
-![Google Gemini](https://img.shields.io/badge/Google-Gemini-yellow)
+<div align="center">
+  <img src="https://img.shields.io/badge/Pathlight-AI-3498db" alt="Pathlight AI" />
+  <img src="https://img.shields.io/badge/Version-1.3-blue" alt="Version" />
+  <img src="https://img.shields.io/badge/Python-3.8+-green" alt="Python" />
+  <img src="https://img.shields.io/badge/Streamlit-1.43.2-red" alt="Streamlit" />
+  <img src="https://img.shields.io/badge/Google-Gemini-yellow" alt="Google Gemini" />
+</div>
 
-## Overview
+## <div align="center">Overview</div>
 
 Pathlight AI is a comprehensive career advancement platform that leverages Google's Gemini AI models to help job seekers optimize their application materials and career strategy. The platform provides detailed resume analysis, career tools, and job market insights through an intuitive web interface built with Streamlit.
 
-## Features
+## <div align="center">Features</div>
 
 ### 📄 Resume Analysis & Tools
 
@@ -77,7 +79,7 @@ Pathlight AI is a comprehensive career advancement platform that leverages Googl
 - Analytics for job freshness and position availability
 - Company-specific metrics and comparisons
 
-## Technology Stack & Architecture
+## <div align="center">Technology Stack & Architecture</div>
 
 ### Core Components
 
@@ -110,7 +112,121 @@ The application follows a modular architecture with clear separation of concerns
 └── utils.py                # Shared utility functions
 ```
 
-### AI Prompt Engineering
+## <div align="center">Module Deep Dive</div>
+
+### main.py
+The orchestration layer that:
+- Initializes the Streamlit UI with custom CSS styling
+- Manages session state for persistent data between interactions
+- Configures Gemini AI models with API key validation and error handling
+- Implements tab-based navigation between application features
+- Integrates all individual modules into a cohesive application flow
+- Handles file uploads and text extraction
+- Provides real-time feedback during AI processing
+
+### analysis.py
+The core analysis engine that:
+- Implements a sophisticated hybrid matching algorithm combining keyword matching and semantic similarity
+- Uses cached Spacy and Sentence Transformer models for efficiency
+- Generates embeddings from resume and job description text
+- Calculates normalized similarity scores using FAISS vector search
+- Produces detailed JSON output with categorized analysis
+- Implements fallback strategies with simplified prompts if initial analysis fails
+- Provides enhancement suggestions independent of job matching
+
+### display.py
+A comprehensive UI component library that:
+- Defines global CSS styling for consistent UI/UX
+- Contains display functions for each analysis type
+- Implements card-based layouts for analytical results
+- Creates interactive expandable sections for detailed information
+- Renders score visualizations and progress indicators
+- Formats enhancement suggestions with before/after comparisons
+- Ensures responsive design across different screen sizes
+
+### dashboard.py
+A robust job market analytics system that:
+- Fetches and caches job data from Supabase
+- Cleans and normalizes location, company, and job title data
+- Extracts cities from location strings with fuzzy matching
+- Implements a comprehensive filtering system with multiselect capabilities
+- Generates interactive visualizations including:
+  - Bar charts for company and job title distribution
+  - Pie charts for proportional analysis
+  - Geographic heat maps for location-based insights
+  - Word clouds for job title analysis
+- Calculates job freshness metrics and position availability
+
+### ats_optimization.py
+A comprehensive ATS compatibility analyzer that:
+- Performs multiple AI-powered checks on resume content
+- Detects and suggests corrections for spelling and grammar errors
+- Identifies passive voice constructions with active alternatives
+- Analyzes bullet point effectiveness and offers improvements
+- Evaluates impact statements and quantifiable achievements
+- Detects repetitive language and suggests variations
+- Assesses document structure and formatting for ATS compatibility
+- Provides section-by-section enhancement recommendations
+
+### linkedin_optimization.py
+A LinkedIn profile optimization system that:
+- Generates tailored headline suggestions with strategic rationale
+- Creates structured "About" section content based on resume information
+- Optimizes job experience descriptions to highlight achievements
+- Recommends specific skills to add and prioritize for endorsements
+- Suggests additional profile sections like projects and certifications
+- Includes robust error handling with retry logic for JSON parsing
+- Implements logging for troubleshooting generation issues
+
+### interview_tips.py
+An interview preparation framework that:
+- Creates hyper-personalized interview strategies based on resume and job description
+- Identifies preparation focus areas based on gap analysis
+- Generates potential behavioral questions with STAR method response frameworks
+- Develops technical questions targeting the exact skills in the job description
+- Maps questions directly to relevant sections of your resume
+- Suggests thoughtful questions for the candidate to ask the interviewer
+- Presents all information in a structured, actionable format
+
+### career_roadmap.py
+A career development planning system that:
+- Analyzes resume content to recommend a logical next career focus
+- Creates a multi-tiered roadmap with short, medium, and long-term goals
+- Provides specific, actionable objectives for each timeframe
+- Recommends resources with valid, publicly accessible URLs
+- Breaks down technical and leadership skills to develop
+- Delivers content in a structured JSON format for consistent parsing
+- Includes comprehensive error handling
+
+### job_recommendation.py
+A job role suggestion engine that:
+- Accepts either resume uploads or text descriptions of skills/experience
+- Generates targeted job role recommendations with justification
+- Creates custom career development roadmaps aligned with the recommended role
+- Suggests relevant certification paths with descriptions and links
+- Provides project ideas at beginner, intermediate, and advanced levels
+- Lists key technologies and skills to develop with detailed descriptions
+- Formats all information in a consistent, parsable JSON structure
+
+### cover_letter.py
+A sophisticated cover letter generation system that:
+- Creates highly personalized content based on resume and job description analysis
+- Extracts contact information from resume text for proper letter formatting
+- Implements a professional structure with proper salutation and sign-off
+- Maintains a natural, engaging tone while remaining highly professional
+- Subtly integrates relevant achievements and skills from the resume
+- Connects experience directly to job requirements without explicit references
+- Handles error cases gracefully with fallback to raw text display
+
+### utils.py
+A utility module that:
+- Provides functions for text extraction from PDF and DOCX files
+- Implements robust JSON cleaning and parsing
+- Handles text preprocessing for NLP operations
+- Performs synonym generation for keyword expansion
+- Implements error handling and logging
+
+## <div align="center">AI Prompt Engineering</div>
 
 The project employs sophisticated prompt engineering techniques:
 
@@ -120,7 +236,7 @@ The project employs sophisticated prompt engineering techniques:
 - **Error Handling**: Robust response parsing with error recovery and retry mechanisms
 - **Context Integration**: Dynamic inclusion of user inputs (resume, job descriptions) with clear separators
 
-## Technical Implementation Details
+## <div align="center">Technical Implementation Details</div>
 
 ### Resume Analysis Engine
 
@@ -187,17 +303,19 @@ The dashboard functionality includes:
    - Status filtering (active vs. expired)
    - Location-based filtering
 
-## Error Handling & Resilience
+## <div align="center">Error Handling & Resilience</div>
 
 The application implements comprehensive error handling:
 
 - **AI Service Errors**: Catch and process API-specific exceptions
-- **Retry Logic**: Automatic retries for transient failures
-- **Fallback Mechanisms**: Default values and graceful degradation
+- **Retry Logic**: Automatic retries for transient failures in LinkedIn and resume analysis
+- **Fallback Mechanisms**: Simplified prompts and default values when primary approach fails
 - **User Feedback**: Clear error messages with suggested actions
 - **Logging**: Detailed logging throughout for diagnostics and monitoring
+- **Exception Handling**: Type-specific exception handling for Google API errors
+- **Graceful Degradation**: Partial functionality when components fail
 
-## Setup and Configuration
+## <div align="center">Setup and Configuration</div>
 
 ### Prerequisites
 
@@ -248,7 +366,7 @@ Start the Streamlit application:
 streamlit run main.py
 ```
 
-## Usage Guide
+## <div align="center">Usage Guide</div>
 
 ### Resume Analysis
 
@@ -274,24 +392,44 @@ streamlit run main.py
 3. Explore the interactive visualizations
 4. Analyze trends, salary data, and company comparisons
 
-## Performance Optimization
+## <div align="center">Performance Optimization</div>
 
 The application includes several performance optimizations:
 
-- **Caching**: Streamlit's cache mechanisms for model loading and data fetching
-- **Lazy Loading**: Components load only when needed
-- **Efficient Vector Search**: FAISS for high-performance similarity matching
-- **Response Parsing**: Robust JSON extraction for reliable AI outputs
-- **Session State Management**: Persistent state for improved user experience
+- **Caching**: 
+  - Streamlit's `@st.cache_resource` for model loading
+  - `@st.cache_data` for job market data fetching
+  - Timeout settings for cached data refreshing
+ 
+- **Lazy Loading**: 
+  - Components load only when needed
+  - Tab-based interface prevents unnecessary computations
+  
+- **Efficient Vector Search**: 
+  - FAISS for high-performance similarity matching
+  - L2 normalization for accurate distance calculation
+  - NumPy array optimizations for matrix operations
+  
+- **Response Parsing**: 
+  - Robust JSON extraction with regex pattern matching
+  - Error recovery for malformed JSON responses
+  - Fallback to simpler parsing when needed
+  
+- **Session State Management**: 
+  - Persistent variable storage across reruns
+  - Efficient state updates with Lambda functions
+  - Defensive state initialization to prevent errors
 
-## Privacy and Security
+## <div align="center">Privacy and Security</div>
 
 - **Local Processing**: Resume parsing performed locally
 - **No Data Storage**: User resumes and job descriptions are not stored
 - **API Key Protection**: Secure handling of API keys via Streamlit secrets
 - **Error Sanitization**: Detailed errors logged but sanitized for user display
+- **Sensitive Data Handling**: Contact information extracted but not transmitted
+- **Input Validation**: Checks for file types and content before processing
 
-## Future Development Roadmap
+## <div align="center">Future Development Roadmap</div>
 
 Potential enhancements for future releases:
 
@@ -299,32 +437,34 @@ Potential enhancements for future releases:
    - Predictive salary modeling
    - Skills demand forecasting
    - Career path optimization
+   - Role transition probability analysis
 
 2. **Enhanced AI Features**:
    - Video interview preparation
    - Personalized learning path generation
    - Networking strategy optimization
+   - Cover letter style customization
 
 3. **Platform Extensions**:
    - Mobile application
    - Chrome extension for job application assistance
    - Email integration for application tracking
+   - Resume version management
 
 4. **Infrastructure**:
    - Multi-model AI support
    - Enhanced caching for faster performance
    - Distributed processing for large-scale analysis
+   - User accounts for progress tracking
 
----
-
-## Contributors
+## <div align="center">Contributors</div>
 
 - **Lead Developer**: [Gagan N](https://www.linkedin.com/in/gagan-rao)
 
-## License
+## <div align="center">License</div>
 
 This project is proprietary software. All rights reserved.
 
 ---
 
-Created with ❤️ using Google Gemini AI 
+<div align="center">Created with ❤️ using Google Gemini AI</div> 

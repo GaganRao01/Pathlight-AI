@@ -459,7 +459,15 @@ Potential enhancements for future releases:
 
 ## <div align="center">Contributors</div>
 
-- **Lead Developer**: [Gagan N](https://www.linkedin.com/in/gagan-rao)
+## 👥 Contributors
+
+| Name              | GitHub                                                              | LinkedIn                                                                 |
+|-------------------|---------------------------------------------------------------------|--------------------------------------------------------------------------|
+| Gagan Rao         | [@GaganRao01](https://github.com/GaganRao01)                       | [Gagan Rao](https://www.linkedin.com/in/gagan-rao/)                      |
+| Sai Kumar S       | [@saikumarsk2210](https://github.com/saikumarsk2210)               | [Sai Kumar S](https://www.linkedin.com/in/sk-saikumar/)                 |
+| Samarth S Vaidya  | [@samarth-S-vaidya](https://github.com/samarth-S-vaidya)           | [Samarth S Vaidya](https://www.linkedin.com/in/samarth-s-vaidya)        |
+| Keerthana M       | [@keerth12](https://github.com/keerth12)                           | [Keerthana M](https://www.linkedin.com/in/keerthana-m-a8038325a/)       |
+                  
 
 ## <div align="center">License</div>
 
